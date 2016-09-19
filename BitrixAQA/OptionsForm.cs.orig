@@ -1,0 +1,932 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Windows.Forms;
+using System.Xml;
+using Aqua.MiscMethods;
+using Aqua.Selenium.General_Methods;
+using System.IO;
+
+namespace Aqua
+{    
+    public partial class OptionsForm : Form
+    {
+        public static OptionsForm form;
+
+        public OptionsForm()
+        {
+            InitializeComponent();
+            form = this;
+        }
+
+        private void OptionsForm_Load(object sender, EventArgs e)
+        {
+            OptionsRead();
+        }
+
+        public static void OptionsWrite()
+        {
+            XmlWriterSettings settings = new XmlWriterSettings();
+
+            // включаем отступ для элементов XML документа
+            // (позволяет наглядно изобразить иерархию XML документа)
+            settings.Indent = true;
+            settings.IndentChars = "    "; // задаем отступ, здесь у меня 4 пробела
+
+            // задаем переход на новую строку
+            settings.NewLineChars = "\n";
+
+            // Нужно ли опустить строку декларации формата XML документа
+            // речь идет о строке вида "<?xml version="1.0" encoding="utf-8"?>"
+            settings.OmitXmlDeclaration = false;
+
+            using (XmlWriter output = XmlWriter.Create("options.xml", settings))
+            {
+                output.WriteStartElement("Options");
+                    #region Пути к установкам, куда будем распаковывать архивы дистров
+                    output.WriteStartElement("PathToFolderWhereToInstall");
+                        output.WriteStartElement("edition"); output.WriteAttributeString("title", "BB");
+                            output.WriteElementString("mysql", OptionsForm.form.tbPathBB_mysql.Text);
+                            output.WriteElementString("mssql", OptionsForm.form.tbPathBB_mssql.Text);
+                            output.WriteElementString("mssql_odbc", OptionsForm.form.tbPathBB_mssql_odbc.Text);
+                            output.WriteElementString("oracle", OptionsForm.form.tbPathBB_oracle.Text);
+                            output.WriteElementString("solutions", OptionsForm.form.tbPathBB_solutions.Text);
+                            output.WriteElementString("minconfig", OptionsForm.form.tbPathBB_minconfig.Text);
+                        output.WriteEndElement();
+
+                        output.WriteStartElement("edition"); output.WriteAttributeString("title", "BINT");
+                            output.WriteElementString("mysql", OptionsForm.form.tbPathBINT_mysql.Text.Trim());
+                            output.WriteElementString("mssql", OptionsForm.form.tbPathBINT_mssql.Text.Trim());
+                            output.WriteElementString("mssql_odbc", OptionsForm.form.tbPathBINT_mssql_odbc.Text.Trim());
+                            output.WriteElementString("oracle", OptionsForm.form.tbPathBINT_oracle.Text.Trim());
+                            output.WriteElementString("minconfig", OptionsForm.form.tbPathBINT_minconfig.Text.Trim());
+                        output.WriteEndElement();
+
+                        output.WriteStartElement("edition"); output.WriteAttributeString("title", "BUS");
+                            output.WriteElementString("cluster", OptionsForm.form.tbPath_BUS_Cluster.Text.Trim());
+                            output.WriteElementString("business", OptionsForm.form.tbPath_BUS_Business.Text.Trim());
+                            output.WriteElementString("small_business", OptionsForm.form.tbPath_BUS_SmallBusiness.Text.Trim());
+                            output.WriteElementString("expert", OptionsForm.form.tbPath_BUS_Expert.Text.Trim());
+                            output.WriteElementString("standart", OptionsForm.form.tbPath_BUS_Standart.Text.Trim());
+                            output.WriteElementString("start", OptionsForm.form.tbPath_BUS_Start.Text.Trim());
+                            output.WriteElementString("first_site", OptionsForm.form.tbPath_BUS_FirstSite.Text.Trim());
+                        output.WriteEndElement();
+
+                        output.WriteStartElement("edition"); output.WriteAttributeString("title", "CP");
+                            output.WriteElementString("business_process", OptionsForm.form.tbPath_CP_business_process.Text.Trim());
+                            output.WriteElementString("team", OptionsForm.form.tbPath_CP_team.Text.Trim());
+                            output.WriteElementString("company", OptionsForm.form.tbPath_CP_company.Text.Trim());
+                        output.WriteEndElement();
+
+                        output.WriteStartElement("edition"); output.WriteAttributeString("title", "B24");
+                            output.WriteElementString("local", OptionsForm.form.tbPathB24_local.Text.Trim());
+                        output.WriteEndElement();
+                    output.WriteEndElement();
+                    #endregion
+
+                    #region Урлы установок
+                    output.WriteStartElement("URLS");
+                        output.WriteStartElement("edition"); output.WriteAttributeString("title", "BB");
+                            output.WriteElementString("mysql", OptionsForm.form.tbURL_BB_mysql.Text.Trim());
+                            output.WriteElementString("mssql", OptionsForm.form.tbURL_BB_mssql.Text.Trim());
+                            output.WriteElementString("mssql_odbc", OptionsForm.form.tbURL_BB_mssql_odbc.Text.Trim());
+                            output.WriteElementString("oracle", OptionsForm.form.tbURL_BB_oracle.Text.Trim());
+                            output.WriteElementString("solutions", OptionsForm.form.tbURL_BB_solutions.Text.Trim());
+                            output.WriteElementString("minconfig", OptionsForm.form.tbURL_BB_minconfig.Text.Trim());
+                        output.WriteEndElement();
+
+                        output.WriteStartElement("edition"); output.WriteAttributeString("title", "BINT");
+                            output.WriteElementString("mysql", OptionsForm.form.tbURL_BINT_mysql.Text.Trim());
+                            output.WriteElementString("mssql", OptionsForm.form.tbURL_BINT_mssql.Text.Trim());
+                            output.WriteElementString("mssql_odbc", OptionsForm.form.tbURL_BINT_mssql_odbc.Text.Trim());
+                            output.WriteElementString("oracle", OptionsForm.form.tbURL_BINT_oracle.Text.Trim());
+                            output.WriteElementString("minconfig", OptionsForm.form.tbURL_BINT_minconfig.Text.Trim());
+                        output.WriteEndElement();
+
+                        output.WriteStartElement("edition"); output.WriteAttributeString("title", "BUS");
+                            output.WriteElementString("cluster", OptionsForm.form.tbURL_BUS_cluster.Text.Trim());
+                            output.WriteElementString("business", OptionsForm.form.tbURL_BUS_business.Text.Trim());
+                            output.WriteElementString("small_business", OptionsForm.form.tbURL_BUS_smallbusiness.Text.Trim());
+                            output.WriteElementString("expert", OptionsForm.form.tbURL_BUS_expert.Text.Trim());
+                            output.WriteElementString("standart", OptionsForm.form.tbURL_BUS_standart.Text.Trim());
+                            output.WriteElementString("start", OptionsForm.form.tbURL_BUS_start.Text.Trim());
+                            output.WriteElementString("first_site", OptionsForm.form.tbURL_BUS_firstsite.Text.Trim());
+                        output.WriteEndElement();
+
+                        output.WriteStartElement("edition"); output.WriteAttributeString("title", "CP");
+                            output.WriteElementString("business_process", OptionsForm.form.tbURL_CP_business_process.Text.Trim());
+                            output.WriteElementString("team", OptionsForm.form.tbURL_CP_team.Text.Trim());
+                            output.WriteElementString("company", OptionsForm.form.tbURL_CP_company.Text.Trim());
+                        output.WriteEndElement();
+
+                        output.WriteStartElement("edition"); output.WriteAttributeString("title", "B24");
+                            output.WriteElementString("local", OptionsForm.form.tbURL_B24local_mysql.Text.Trim());
+                            output.WriteElementString("production", OptionsForm.form.tbURL_B24production_mysql.Text.Trim());
+                        output.WriteEndElement();
+                    output.WriteEndElement();
+                    #endregion
+
+                    #region Ключи к установкам
+                    output.WriteStartElement("Keys");
+                        output.WriteElementString("GAG", OptionsForm.form.tbKey_Gag.Text);
+
+                        output.WriteStartElement("edition"); output.WriteAttributeString("title", "BB");
+                            output.WriteElementString("mysql", OptionsForm.form.tbKeyBB_mysql.Text.Trim());
+                            output.WriteElementString("mssql", OptionsForm.form.tbKeyBB_mssql.Text.Trim());
+                            output.WriteElementString("oracle", OptionsForm.form.tbKeyBB_oracle.Text.Trim());
+                            output.WriteElementString("solutions", OptionsForm.form.tbKeyBB_solutions.Text.Trim());
+                        output.WriteEndElement();
+
+                        output.WriteStartElement("edition"); output.WriteAttributeString("title", "BINT");
+                            output.WriteElementString("mysql", OptionsForm.form.tbKeyBINT_mysql.Text.Trim());
+                            output.WriteElementString("mssql", OptionsForm.form.tbKeyBINT_mssql.Text.Trim());
+                            output.WriteElementString("oracle", OptionsForm.form.tbKeyBINT_oracle.Text.Trim());
+                        output.WriteEndElement();
+
+                        output.WriteStartElement("edition"); output.WriteAttributeString("title", "BUS");
+                            output.WriteElementString("cluster", OptionsForm.form.tbKeyBUS_cluster.Text.Trim());
+                            output.WriteElementString("business", OptionsForm.form.tbKeyBUS_business.Text.Trim());
+                            output.WriteElementString("small_business", OptionsForm.form.tbKeyBUS_small_business.Text.Trim());
+                            output.WriteElementString("expert", OptionsForm.form.tbKeyBUS_expert.Text.Trim());
+                            output.WriteElementString("standart", OptionsForm.form.tbKeyBUS_standart.Text.Trim());
+                            output.WriteElementString("start", OptionsForm.form.tbKeyBUS_start.Text.Trim());
+                            output.WriteElementString("first_site", OptionsForm.form.tbKeyBUS_first_site.Text.Trim());
+                        output.WriteEndElement();
+
+                        output.WriteStartElement("edition"); output.WriteAttributeString("title", "CP");
+                            output.WriteElementString("business_process", OptionsForm.form.tbKeyCP_business_process.Text.Trim());
+                            output.WriteElementString("team", OptionsForm.form.tbKeyCP_team.Text.Trim());
+                            output.WriteElementString("company", OptionsForm.form.tbKeyCP_company.Text.Trim());
+                        output.WriteEndElement();
+
+                    output.WriteEndElement();
+                    #endregion
+
+                    //Путь к источнику дистров, откуда будем распаковывать архивы
+                    output.WriteStartElement("PathSourceOfDistrs");
+                        output.WriteElementString("Path", OptionsForm.form.tbSelectSourceDir.Text.Trim());
+                    output.WriteEndElement();
+
+                    #region имена файлов дистров
+                    output.WriteStartElement("DistrsFileNames");
+                        output.WriteElementString("BB", OptionsForm.form.tbFileName_BB.Text.Trim());
+                        output.WriteElementString("BINT", OptionsForm.form.tbFileName_BINT.Text.Trim());
+                        output.WriteElementString("cluster", OptionsForm.form.tbFileName_BUS_Cluster.Text.Trim());
+                        output.WriteElementString("business", OptionsForm.form.tbFileName_BUS_Business.Text.Trim());
+                        output.WriteElementString("small_business", OptionsForm.form.tbFileName_BUS_small_business.Text.Trim());
+                        output.WriteElementString("expert", OptionsForm.form.tbFileName_BUS_Expert.Text.Trim());
+                        output.WriteElementString("standart", OptionsForm.form.tbFileName_BUS_Standart.Text.Trim());
+                        output.WriteElementString("start", OptionsForm.form.tbFileName_BUS_Start.Text.Trim());
+                        output.WriteElementString("first_site", OptionsForm.form.tbFileName_BUS_first_site.Text.Trim());
+                        output.WriteElementString("business_process", OptionsForm.form.tbFileName_CP_business_process.Text.Trim());
+                        output.WriteElementString("team", OptionsForm.form.tbFileName_CP_team.Text.Trim());
+                        output.WriteElementString("company", OptionsForm.form.tbFileName_CP_company.Text.Trim());
+                    output.WriteEndElement();
+                    #endregion
+
+                    //строки подключения к базам
+                    output.WriteStartElement("ConnectionString");
+                        output.WriteElementString("mysql", OptionsForm.form.tbConString_mysql.Text.Trim());
+                        output.WriteElementString("mssql_odbc", OptionsForm.form.tbConString_mssql_odbc.Text.Trim());
+                        output.WriteElementString("mssql_native", OptionsForm.form.tbConString_mssql_native.Text.Trim());
+                        output.WriteElementString("oracle", OptionsForm.form.tbConString_oracle.Text.Trim());
+                        output.WriteElementString("b24_production", OptionsForm.form.tbConString_b24_production.Text.Trim());
+                        output.WriteElementString("b24_local", OptionsForm.form.tbConString_b24_local.Text.Trim());
+                    output.WriteEndElement();
+
+                    //Урл к мантису
+                    output.WriteStartElement("Mantis");
+                        output.WriteElementString("URL", OptionsForm.form.tbURL_mantis.Text.Trim());
+                    output.WriteEndElement();
+
+                    //настройки фаерфокса
+                    output.WriteStartElement("firefox_options");
+                        output.WriteElementString("pathToFirefoxExe", OptionsForm.form.tbPathToFfExe.Text.Trim());
+                        output.WriteElementString("pathToFirefoxProfile", OptionsForm.form.tbPathToFfProfile.Text.Trim());
+                    output.WriteEndElement();
+
+                    //данные последнего проверенного урла
+                    output.WriteStartElement("CheckUrls_options");
+                    output.WriteElementString("url", MainForm.form.tbCheckUrlsUrlToCheck.Text.Trim());
+                        output.WriteElementString("login", MainForm.form.tbCheckUrlsLogin.Text.Trim());
+                        output.WriteElementString("password", MainForm.form.tbCheckUrlsPass.Text.Trim());
+                    output.WriteEndElement();
+
+                    //настройки админа                    
+                    output.WriteStartElement("admin_settings");
+                        output.WriteElementString("name", OptionsForm.form.tbAdmin_Name.Text.Trim());
+                        output.WriteElementString("lastName", OptionsForm.form.tbAdmin_LastName.Text.Trim());
+                        output.WriteElementString("email", OptionsForm.form.tbAdmin_Email.Text.Trim());
+                        output.WriteElementString("login", OptionsForm.form.tbAdmin_Login.Text.Trim());
+                        output.WriteElementString("password", OptionsForm.form.tbAdmin_Password.Text.Trim());
+                    output.WriteEndElement();
+
+                    #region модули редакций                    
+                    output.WriteStartElement("modules");
+                        output.WriteStartElement("BUS");
+                            
+                            string[] lst;
+                            //первый сайт
+                            output.WriteStartElement("first_site");
+                                lst = OptionsForm.form.tbModulesFirstSite.Text.Split(new Char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+                                for (int r = 0; r < lst.Count(); r++)
+                                {
+                                    output.WriteElementString("m", lst[r].Trim());
+                                }
+                            output.WriteEndElement();
+
+                            //старт
+                            output.WriteStartElement("start");
+                                lst = OptionsForm.form.tbModulesStart.Text.Split(new Char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+                                for (int r = 0; r < lst.Count(); r++)
+                                {
+                                    output.WriteElementString("m", lst[r].Trim());
+                                }
+                            output.WriteEndElement();
+
+                            //стандарт
+                            output.WriteStartElement("standart");
+                                lst = OptionsForm.form.tbModulesStandart.Text.Split(new Char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+                                for (int r = 0; r < lst.Count(); r++)
+                                {
+                                    output.WriteElementString("m", lst[r].Trim());
+                                }
+                            output.WriteEndElement();
+
+                            //эксперт
+                            output.WriteStartElement("expert");
+                                lst = OptionsForm.form.tbModulesExpert.Text.Split(new Char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+                                for (int r = 0; r < lst.Count(); r++)
+                                {
+                                    output.WriteElementString("m", lst[r].Trim());
+                                }
+                            output.WriteEndElement();
+
+                            //малый бизнес
+                            output.WriteStartElement("small_business");
+                                lst = OptionsForm.form.tbModulesSmallBusiness.Text.Split(new Char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+                                for (int r = 0; r < lst.Count(); r++)
+                                {
+                                    output.WriteElementString("m", lst[r].Trim());
+                                }
+                            output.WriteEndElement();
+
+                            //бизнес
+                            output.WriteStartElement("business");
+                                lst = OptionsForm.form.tbModulesBusiness.Text.Split(new Char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+                                for (int r = 0; r < lst.Count(); r++)
+                                {
+                                    output.WriteElementString("m", lst[r].Trim());
+                                }
+                            output.WriteEndElement();
+
+                            //кластер
+                            output.WriteStartElement("cluster");
+                                lst = OptionsForm.form.tbModulesCluster.Text.Split(new Char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+                                for (int r = 0; r < lst.Count(); r++)
+                                {
+                                    output.WriteElementString("m", lst[r].Trim());
+                                }
+                            output.WriteEndElement();
+
+                            //бизнес кластер
+                            output.WriteStartElement("business_cluster");
+                                lst = OptionsForm.form.tbModulesBusinessCluster.Text.Split(new Char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+                                for (int r = 0; r < lst.Count(); r++)
+                                {
+                                    output.WriteElementString("m", lst[r].Trim());
+                                }
+                            output.WriteEndElement();
+
+                        output.WriteEndElement();
+
+                        output.WriteStartElement("CP");
+                            //эксперт
+                            output.WriteStartElement("holding");
+                                lst = OptionsForm.form.tbModulesCPHolding.Text.Split(new Char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+                                for (int r = 0; r < lst.Count(); r++)
+                                {
+                                    output.WriteElementString("m", lst[r].Trim());
+                                }
+                            output.WriteEndElement();
+
+                            //бизнес процессы
+                            output.WriteStartElement("business_process");
+                                lst = OptionsForm.form.tbModulesCPBusinessProcess.Text.Split(new Char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+                                for (int r = 0; r < lst.Count(); r++)
+                                {
+                                    output.WriteElementString("m", lst[r].Trim());
+                                }
+                            output.WriteEndElement();
+
+                            //совместная работа
+                            output.WriteStartElement("team");
+                                lst = OptionsForm.form.tbModulesCPTeam.Text.Split(new Char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+                                for (int r = 0; r < lst.Count(); r++)
+                                {
+                                    output.WriteElementString("m", lst[r].Trim());
+                                }
+                            output.WriteEndElement();
+
+                            //компания
+                            output.WriteStartElement("company");
+                                lst = OptionsForm.form.tbModulesCPCompany.Text.Split(new Char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+                                for (int r = 0; r < lst.Count(); r++)
+                                {
+                                    output.WriteElementString("m", lst[r].Trim());
+                                }
+                            output.WriteEndElement();
+                        output.WriteEndElement();
+
+                    output.WriteEndElement();
+                    #endregion
+
+                output.WriteEndDocument();
+
+                // Сбрасываем буферизированные данные
+                output.Flush();
+                // Закрываем файл, с которым связан output
+                output.Close();
+            }
+        }
+
+        public static void OptionsRead()
+        {
+            XmlDocument reader = new XmlDocument();
+            reader.Load("options.xml");
+
+            if (File.Exists("options.xml") == false)
+                File.Create("options.xml");
+
+            #region Пути к установкам
+            //пути к установкам BB
+            foreach (XmlElement el in reader.DocumentElement.SelectNodes("/Options/PathToFolderWhereToInstall/edition[@title='BB']"))
+            {
+                OptionsForm.form.tbPathBB_mysql.Text = el.SelectSingleNode("mysql") != null ? el.SelectSingleNode("mysql").InnerText : "";
+                OptionsForm.form.tbPathBB_mssql.Text = el.SelectSingleNode("mssql") != null ? el.SelectSingleNode("mssql").InnerText : "";
+                OptionsForm.form.tbPathBB_mssql_odbc.Text = el.SelectSingleNode("mssql_odbc") != null ? el.SelectSingleNode("mssql_odbc").InnerText : "";
+                OptionsForm.form.tbPathBB_oracle.Text = el.SelectSingleNode("oracle") != null ? el.SelectSingleNode("oracle").InnerText : "";
+                OptionsForm.form.tbPathBB_solutions.Text = el.SelectSingleNode("solutions") != null ? el.SelectSingleNode("solutions").InnerText : "";
+                OptionsForm.form.tbPathBB_minconfig.Text = el.SelectSingleNode("minconfig") != null ? el.SelectSingleNode("minconfig").InnerText : "";
+            }
+
+            //пути к установкам BINT
+            foreach (XmlElement el in reader.DocumentElement.SelectNodes("/Options/PathToFolderWhereToInstall/edition[@title='BINT']"))
+            {
+                OptionsForm.form.tbPathBINT_mysql.Text = el.SelectSingleNode("mysql") != null ? el.SelectSingleNode("mysql").InnerText : "";
+                OptionsForm.form.tbPathBINT_mssql.Text = el.SelectSingleNode("mssql") != null ? el.SelectSingleNode("mssql").InnerText : "";
+                OptionsForm.form.tbPathBINT_mssql_odbc.Text = el.SelectSingleNode("mssql_odbc") != null ? el.SelectSingleNode("mssql_odbc").InnerText : "";
+                OptionsForm.form.tbPathBINT_oracle.Text = el.SelectSingleNode("oracle") != null ? el.SelectSingleNode("oracle").InnerText : "";
+                OptionsForm.form.tbPathBINT_minconfig.Text = el.SelectSingleNode("minconfig") != null ? el.SelectSingleNode("minconfig").InnerText : "";
+            }
+
+            //пути к установкам BUS
+            foreach (XmlElement el in reader.DocumentElement.SelectNodes("/Options/PathToFolderWhereToInstall/edition[@title='BUS']"))
+            {
+                OptionsForm.form.tbPath_BUS_Cluster.Text = el.SelectSingleNode("cluster") != null ? el.SelectSingleNode("cluster").InnerText : "";
+                OptionsForm.form.tbPath_BUS_Business.Text = el.SelectSingleNode("business") != null ? el.SelectSingleNode("business").InnerText : "";
+                OptionsForm.form.tbPath_BUS_SmallBusiness.Text = el.SelectSingleNode("small_business") != null ? el.SelectSingleNode("small_business").InnerText : "";
+                OptionsForm.form.tbPath_BUS_Expert.Text = el.SelectSingleNode("expert") != null ? el.SelectSingleNode("expert").InnerText : "";
+                OptionsForm.form.tbPath_BUS_Standart.Text = el.SelectSingleNode("standart") != null ? el.SelectSingleNode("standart").InnerText : "";
+                OptionsForm.form.tbPath_BUS_Start.Text = el.SelectSingleNode("start") != null ? el.SelectSingleNode("start").InnerText : "";
+                OptionsForm.form.tbPath_BUS_FirstSite.Text = el.SelectSingleNode("first_site") != null ? el.SelectSingleNode("first_site").InnerText : "";
+            }
+
+            //пути к установкам CP
+            foreach (XmlElement el in reader.DocumentElement.SelectNodes("/Options/PathToFolderWhereToInstall/edition[@title='CP']"))
+            {
+
+                OptionsForm.form.tbPath_CP_business_process.Text = el.SelectSingleNode("business_process") != null ? el.SelectSingleNode("business_process").InnerText : "";
+                OptionsForm.form.tbPath_CP_team.Text = el.SelectSingleNode("team") != null ? el.SelectSingleNode("team").InnerText : "";
+                OptionsForm.form.tbPath_CP_company.Text = el.SelectSingleNode("company") != null ? el.SelectSingleNode("company").InnerText : "";
+            }
+
+            OptionsForm.form.tbPathB24_local.Text = reader.GetValue("/Options/PathToFolderWhereToInstall/edition[@title='B24']/local");
+            #endregion
+
+            #region Урлы установок
+            //BB
+            foreach (XmlElement el in reader.DocumentElement.SelectNodes("/Options/URLS/edition[@title='BB']"))
+            {
+                OptionsForm.form.tbURL_BB_mysql.Text = el.SelectSingleNode("mysql") != null ? el.SelectSingleNode("mysql").InnerText : "";
+                OptionsForm.form.tbURL_BB_mssql.Text = el.SelectSingleNode("mssql") != null ? el.SelectSingleNode("mssql").InnerText : "";
+                OptionsForm.form.tbURL_BB_mssql_odbc.Text = el.SelectSingleNode("mssql_odbc") != null ? el.SelectSingleNode("mssql_odbc").InnerText : "";
+                OptionsForm.form.tbURL_BB_oracle.Text = el.SelectSingleNode("oracle") != null ? el.SelectSingleNode("oracle").InnerText : "";
+                OptionsForm.form.tbURL_BB_solutions.Text = el.SelectSingleNode("solutions") != null ? el.SelectSingleNode("solutions").InnerText : "";
+                OptionsForm.form.tbURL_BB_minconfig.Text = el.SelectSingleNode("minconfig") != null ? el.SelectSingleNode("minconfig").InnerText : "";
+            }
+
+            //Урлы установок BINT
+            foreach (XmlElement el in reader.DocumentElement.SelectNodes("/Options/URLS/edition[@title='BINT']"))
+            {
+                OptionsForm.form.tbURL_BINT_mysql.Text = el.SelectSingleNode("mysql") != null ? el.SelectSingleNode("mysql").InnerText : "";
+                OptionsForm.form.tbURL_BINT_mssql.Text = el.SelectSingleNode("mssql") != null ? el.SelectSingleNode("mssql").InnerText : "";
+                OptionsForm.form.tbURL_BINT_mssql_odbc.Text = el.SelectSingleNode("mssql_odbc") != null ? el.SelectSingleNode("mssql_odbc").InnerText : "";
+                OptionsForm.form.tbURL_BINT_oracle.Text = el.SelectSingleNode("oracle") != null ? el.SelectSingleNode("oracle").InnerText : "";
+                OptionsForm.form.tbURL_BINT_minconfig.Text = el.SelectSingleNode("minconfig") != null ? el.SelectSingleNode("minconfig").InnerText : "";
+            }
+
+            //Урлы установок BUS
+            foreach (XmlElement el in reader.DocumentElement.SelectNodes("/Options/URLS/edition[@title='BUS']"))
+            {
+                OptionsForm.form.tbURL_BUS_cluster.Text = el.SelectSingleNode("cluster") != null ? el.SelectSingleNode("cluster").InnerText : "";
+                OptionsForm.form.tbURL_BUS_business.Text = el.SelectSingleNode("business") != null ? el.SelectSingleNode("business").InnerText : "";
+                OptionsForm.form.tbURL_BUS_smallbusiness.Text = el.SelectSingleNode("small_business") != null ? el.SelectSingleNode("small_business").InnerText : "";
+                OptionsForm.form.tbURL_BUS_expert.Text = el.SelectSingleNode("expert") != null ? el.SelectSingleNode("expert").InnerText : "";
+                OptionsForm.form.tbURL_BUS_standart.Text = el.SelectSingleNode("standart") != null ? el.SelectSingleNode("standart").InnerText : "";
+                OptionsForm.form.tbURL_BUS_start.Text = el.SelectSingleNode("start") != null ? el.SelectSingleNode("start").InnerText : "";
+                OptionsForm.form.tbURL_BUS_firstsite.Text = el.SelectSingleNode("first_site") != null ? el.SelectSingleNode("first_site").InnerText : "";
+            }
+
+            //Урлы установок CP
+            foreach (XmlElement el in reader.DocumentElement.SelectNodes("/Options/URLS/edition[@title='CP']"))
+            {
+                OptionsForm.form.tbURL_CP_business_process.Text = el.SelectSingleNode("business_process") != null ? el.SelectSingleNode("business_process").InnerText : "";
+                OptionsForm.form.tbURL_CP_team.Text = el.SelectSingleNode("team") != null ? el.SelectSingleNode("team").InnerText : "";
+                OptionsForm.form.tbURL_CP_company.Text = el.SelectSingleNode("company") != null ? el.SelectSingleNode("company").InnerText : "";
+            }
+            
+            //Урлы установок B24
+            OptionsForm.form.tbURL_B24local_mysql.Text = reader.GetValue("/Options/URLS/edition[@title='B24']/local");
+            OptionsForm.form.tbURL_B24production_mysql.Text = reader.GetValue("/Options/URLS/edition[@title='B24']/production");
+            #endregion
+
+            #region Ключи
+            //ключи BB
+            foreach (XmlElement el in reader.DocumentElement.SelectNodes("/Options/Keys/edition[@title='BB']"))
+            {
+                OptionsForm.form.tbKeyBB_mysql.Text = el.SelectSingleNode("mysql") != null ? el.SelectSingleNode("mysql").InnerText : "";
+                OptionsForm.form.tbKeyBB_mssql.Text = el.SelectSingleNode("mssql") != null ? el.SelectSingleNode("mssql").InnerText : "";
+                OptionsForm.form.tbKeyBB_oracle.Text = el.SelectSingleNode("oracle") != null ? el.SelectSingleNode("oracle").InnerText : "";
+                OptionsForm.form.tbKeyBB_solutions.Text = el.SelectSingleNode("solutions") != null ? el.SelectSingleNode("solutions").InnerText : "";
+            }
+
+            //ключи BINT
+            foreach (XmlElement el in reader.DocumentElement.SelectNodes("/Options/Keys/edition[@title='BINT']"))
+            {
+                OptionsForm.form.tbKeyBINT_mysql.Text = el.SelectSingleNode("mysql") != null ? el.SelectSingleNode("mysql").InnerText : "";
+                OptionsForm.form.tbKeyBINT_mssql.Text = el.SelectSingleNode("mssql") != null ? el.SelectSingleNode("mssql").InnerText : "";
+                OptionsForm.form.tbKeyBINT_oracle.Text = el.SelectSingleNode("oracle") != null ? el.SelectSingleNode("oracle").InnerText : "";
+            }
+
+            //ключи BUS
+            foreach (XmlElement el in reader.DocumentElement.SelectNodes("/Options/Keys/edition[@title='BUS']"))
+            {
+                OptionsForm.form.tbKeyBUS_cluster.Text = el.SelectSingleNode("cluster") != null ? el.SelectSingleNode("cluster").InnerText : "";
+                OptionsForm.form.tbKeyBUS_business.Text = el.SelectSingleNode("business") != null ? el.SelectSingleNode("business").InnerText : "";
+                OptionsForm.form.tbKeyBUS_small_business.Text = el.SelectSingleNode("small_business") != null ? el.SelectSingleNode("small_business").InnerText : "";
+                OptionsForm.form.tbKeyBUS_expert.Text = el.SelectSingleNode("expert") != null ? el.SelectSingleNode("expert").InnerText : "";
+                OptionsForm.form.tbKeyBUS_standart.Text = el.SelectSingleNode("standart") != null ? el.SelectSingleNode("standart").InnerText : "";
+                OptionsForm.form.tbKeyBUS_start.Text = el.SelectSingleNode("start") != null ? el.SelectSingleNode("start").InnerText : "";
+                OptionsForm.form.tbKeyBUS_first_site.Text = el.SelectSingleNode("first_site") != null ? el.SelectSingleNode("first_site").InnerText : "";
+            }
+
+            //ключи CP
+            foreach (XmlElement el in reader.DocumentElement.SelectNodes("/Options/Keys/edition[@title='CP']"))
+            {
+                OptionsForm.form.tbKeyCP_business_process.Text = el.SelectSingleNode("business_process") != null ? el.SelectSingleNode("business_process").InnerText : "";
+                OptionsForm.form.tbKeyCP_team.Text = el.SelectSingleNode("team") != null ? el.SelectSingleNode("team").InnerText : "";
+                OptionsForm.form.tbKeyCP_company.Text = el.SelectSingleNode("company") != null ? el.SelectSingleNode("company").InnerText : "";
+            }
+
+            //ключ заглушка
+            OptionsForm.form.tbKey_Gag.Text = reader.GetValue("/Options/Keys/GAG");
+            #endregion
+
+            //строки подключения к базам
+            OptionsForm.form.tbConString_mysql.Text = reader.GetValue("/Options/ConnectionString/mysql");
+            OptionsForm.form.tbConString_mssql_native.Text = reader.GetValue("/Options/ConnectionString/mssql_native");
+            OptionsForm.form.tbConString_mssql_odbc.Text = reader.GetValue("/Options/ConnectionString/mssql_odbc");
+            OptionsForm.form.tbConString_oracle.Text = reader.GetValue("/Options/ConnectionString/oracle");
+            OptionsForm.form.tbConString_b24_production.Text = reader.GetValue("/Options/ConnectionString/b24_production");
+            OptionsForm.form.tbConString_b24_local.Text = reader.GetValue("/Options/ConnectionString/b24_local");
+
+            //путь источника дистров
+            OptionsForm.form.tbSelectSourceDir.Text = reader.GetValue("/Options/PathSourceOfDistrs/Path");
+
+            //имена файлов дистров
+            OptionsForm.form.tbFileName_BB.Text = reader.GetValue("/Options/DistrsFileNames/BB");
+            OptionsForm.form.tbFileName_BINT.Text = reader.GetValue("/Options/DistrsFileNames/BINT");
+            //БУС
+            OptionsForm.form.tbFileName_BUS_Cluster.Text = reader.GetValue("/Options/DistrsFileNames/cluster");
+            OptionsForm.form.tbFileName_BUS_Business.Text = reader.GetValue("/Options/DistrsFileNames/business");
+            OptionsForm.form.tbFileName_BUS_small_business.Text = reader.GetValue("/Options/DistrsFileNames/small_business");
+            OptionsForm.form.tbFileName_BUS_Expert.Text = reader.GetValue("/Options/DistrsFileNames/expert");
+            OptionsForm.form.tbFileName_BUS_Standart.Text = reader.GetValue("/Options/DistrsFileNames/standart");
+            OptionsForm.form.tbFileName_BUS_Start.Text = reader.GetValue("/Options/DistrsFileNames/start");
+            OptionsForm.form.tbFileName_BUS_first_site.Text = reader.GetValue("/Options/DistrsFileNames/first_site");
+            //КП
+            OptionsForm.form.tbFileName_CP_business_process.Text = reader.GetValue("/Options/DistrsFileNames/business_process");
+            OptionsForm.form.tbFileName_CP_team.Text = reader.GetValue("/Options/DistrsFileNames/team");
+            OptionsForm.form.tbFileName_CP_company.Text = reader.GetValue("/Options/DistrsFileNames/company");
+
+            //урл к мантису
+            OptionsForm.form.tbURL_mantis.Text = reader.GetValue("/Options/Mantis/URL");
+
+            //путь к firefox.exe и профилю
+            OptionsForm.form.tbPathToFfExe.Text = reader.GetValue("/Options/firefox_options/pathToFirefoxExe");
+            OptionsForm.form.tbPathToFfProfile.Text = reader.GetValue("/Options/firefox_options/pathToFirefoxProfile");
+
+            //настройки админа
+            OptionsForm.form.tbAdmin_Name.Text = reader.GetValue("/Options/admin_settings/name");
+            OptionsForm.form.tbAdmin_LastName.Text = reader.GetValue("/Options/admin_settings/lastName");
+            OptionsForm.form.tbAdmin_Email.Text = reader.GetValue("/Options/admin_settings/email");
+            OptionsForm.form.tbAdmin_Login.Text = reader.GetValue("/Options/admin_settings/login");
+            OptionsForm.form.tbAdmin_Password.Text = reader.GetValue("/Options/admin_settings/password");
+            
+            //последний проверенный урл
+            MainForm.form.tbCheckUrlsUrlToCheck.Text = reader.GetValue("/Options/CheckUrls_options/url");
+            MainForm.form.tbCheckUrlsLogin.Text = reader.GetValue("/Options/CheckUrls_options/login");
+            MainForm.form.tbCheckUrlsPass.Text = reader.GetValue("/Options/CheckUrls_options/password");
+
+            #region модули редакций
+            #region БУС
+            //первый сайт
+            OptionsForm.form.tbModulesFirstSite.Text = "";
+            foreach (XmlElement el in reader.DocumentElement.SelectNodes("/Options/modules/BUS/first_site/m"))
+            {
+                OptionsForm.form.tbModulesFirstSite.Text += el != null ? el.InnerText + "\r\n" : "";
+            }
+
+            //старт
+            OptionsForm.form.tbModulesStart.Text = "";
+            foreach (XmlElement el in reader.DocumentElement.SelectNodes("/Options/modules/BUS/start/m"))
+            {
+                OptionsForm.form.tbModulesStart.Text += el != null ? el.InnerText + "\r\n" : "";
+            }
+
+            //стандарт
+            OptionsForm.form.tbModulesStandart.Text = "";
+            foreach (XmlElement el in reader.DocumentElement.SelectNodes("/Options/modules/BUS/standart/m"))
+            {
+                OptionsForm.form.tbModulesStandart.Text += el != null ? el.InnerText + "\r\n" : "";
+            }
+
+            //эксперт
+            OptionsForm.form.tbModulesExpert.Text = "";
+            foreach (XmlElement el in reader.DocumentElement.SelectNodes("/Options/modules/BUS/expert/m"))
+            {
+                OptionsForm.form.tbModulesExpert.Text += el != null ? el.InnerText + "\r\n" : "";
+            }
+
+            //малый бизнес
+            OptionsForm.form.tbModulesSmallBusiness.Text = "";
+            foreach (XmlElement el in reader.DocumentElement.SelectNodes("/Options/modules/BUS/small_business/m"))
+            {
+                OptionsForm.form.tbModulesSmallBusiness.Text += el != null ? el.InnerText + "\r\n" : "";
+            }
+
+            //бизнес
+            OptionsForm.form.tbModulesBusiness.Text = "";
+            foreach (XmlElement el in reader.DocumentElement.SelectNodes("/Options/modules/BUS/business/m"))
+            {
+                OptionsForm.form.tbModulesBusiness.Text += el != null ? el.InnerText + "\r\n" : "";
+            }
+
+            //кластер
+            OptionsForm.form.tbModulesCluster.Text = "";
+            foreach (XmlElement el in reader.DocumentElement.SelectNodes("/Options/modules/BUS/cluster/m"))
+            {
+                OptionsForm.form.tbModulesCluster.Text += el != null ? el.InnerText + "\r\n" : "";
+            }
+
+            //бизнес кластер
+            OptionsForm.form.tbModulesBusinessCluster.Text = "";
+            foreach (XmlElement el in reader.DocumentElement.SelectNodes("/Options/modules/BUS/business_cluster/m"))
+            {
+                OptionsForm.form.tbModulesBusinessCluster.Text += el != null ? el.InnerText + "\r\n" : "";
+            }
+            #endregion
+            #region КП
+            //холдинг
+            OptionsForm.form.tbModulesCPHolding.Text = "";
+            foreach (XmlElement el in reader.DocumentElement.SelectNodes("/Options/modules/CP/holding/m"))
+            {
+                OptionsForm.form.tbModulesCPHolding.Text += el != null ? el.InnerText + "\r\n" : "";
+            }
+
+            //бизнес процессы
+            OptionsForm.form.tbModulesCPBusinessProcess.Text = "";
+            foreach (XmlElement el in reader.DocumentElement.SelectNodes("/Options/modules/CP/business_process/m"))
+            {
+                OptionsForm.form.tbModulesCPBusinessProcess.Text += el != null ? el.InnerText + "\r\n" : "";
+            }
+
+            //совместная работа
+            OptionsForm.form.tbModulesCPTeam.Text = "";
+            foreach (XmlElement el in reader.DocumentElement.SelectNodes("/Options/modules/CP/team/m"))
+            {
+                OptionsForm.form.tbModulesCPTeam.Text += el != null ? el.InnerText + "\r\n" : "";
+            }
+
+            //компания
+            OptionsForm.form.tbModulesCPCompany.Text = "";
+            foreach (XmlElement el in reader.DocumentElement.SelectNodes("/Options/modules/CP/company/m"))
+            {
+                OptionsForm.form.tbModulesCPCompany.Text += el != null ? el.InnerText + "\r\n" : "";
+            }
+            #endregion
+            #endregion
+        }
+
+        #region кнопки диалогов
+        private void bSelectMySQLPath_bb_Click(object sender, EventArgs e)
+        { 
+            var folderBD = new FolderBrowserDialog();
+
+            if (folderBD.ShowDialog() == DialogResult.OK)
+            {
+                tbPathBB_mysql.Text = (System.IO.Path.GetFullPath(folderBD.SelectedPath).Substring(System.IO.Path.GetFullPath(folderBD.SelectedPath).Length - 1) != @"\" ? tbPathBB_mysql.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath) + @"\" : tbPathBB_mysql.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath));
+            }
+        }
+
+        private void bSelectMSSQLPath_bb_Click(object sender, EventArgs e)
+        {
+            var folderBD = new FolderBrowserDialog();
+
+            if (folderBD.ShowDialog() == DialogResult.OK)
+            {
+                tbPathBB_mssql.Text = (System.IO.Path.GetFullPath(folderBD.SelectedPath).Substring(System.IO.Path.GetFullPath(folderBD.SelectedPath).Length - 1) != @"\" ? tbPathBB_mssql.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath) + @"\" : tbPathBB_mssql.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath));
+            }
+        }
+
+        private void bSelectOraclePath_bb_Click(object sender, EventArgs e)
+        {
+            var folderBD = new FolderBrowserDialog();
+
+            if (folderBD.ShowDialog() == DialogResult.OK)
+            {
+                tbPathBB_oracle.Text = (System.IO.Path.GetFullPath(folderBD.SelectedPath).Substring(System.IO.Path.GetFullPath(folderBD.SelectedPath).Length - 1) != @"\" ? tbPathBB_oracle.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath) + @"\" : tbPathBB_oracle.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath));
+            }
+        }
+
+        private void bSelectSourceDistr_Click(object sender, EventArgs e)
+        {
+            var folderBD = new FolderBrowserDialog();
+
+            if (folderBD.ShowDialog() == DialogResult.OK)
+            {
+                tbSelectSourceDir.Text = (System.IO.Path.GetFullPath(folderBD.SelectedPath).Substring(System.IO.Path.GetFullPath(folderBD.SelectedPath).Length - 1) != @"\" ? tbSelectSourceDir.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath) + @"\" : tbSelectSourceDir.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath));
+            }
+        }
+
+        private void bSelectMinConfigPath_bb_Click(object sender, EventArgs e)
+        {
+            var folderBD = new FolderBrowserDialog();
+
+            if (folderBD.ShowDialog() == DialogResult.OK)
+            {
+                tbPathBB_minconfig.Text = (System.IO.Path.GetFullPath(folderBD.SelectedPath).Substring(System.IO.Path.GetFullPath(folderBD.SelectedPath).Length - 1) != @"\" ? tbPathBB_minconfig.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath) + @"\" : tbPathBB_minconfig.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath));
+            }
+        }
+
+        private void bSelectMysqlPath_bint_Click(object sender, EventArgs e)
+        {
+            var folderBD = new FolderBrowserDialog();
+
+            if (folderBD.ShowDialog() == DialogResult.OK)
+            {
+                tbPathBINT_mysql.Text = (System.IO.Path.GetFullPath(folderBD.SelectedPath).Substring(System.IO.Path.GetFullPath(folderBD.SelectedPath).Length - 1) != @"\" ? tbPathBINT_mysql.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath) + @"\" : tbPathBINT_mysql.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath));
+            }
+        }
+
+        private void bSelectMssqlPath_bint_Click(object sender, EventArgs e)
+        {
+            var folderBD = new FolderBrowserDialog();
+
+            if (folderBD.ShowDialog() == DialogResult.OK)
+            {
+                tbPathBINT_mssql.Text = (System.IO.Path.GetFullPath(folderBD.SelectedPath).Substring(System.IO.Path.GetFullPath(folderBD.SelectedPath).Length - 1) != @"\" ? tbPathBINT_mssql.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath) + @"\" : tbPathBINT_mssql.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath));
+            }
+        }
+
+        private void bSelectOraclePath_bint_Click(object sender, EventArgs e)
+        {
+            var folderBD = new FolderBrowserDialog();
+
+            if (folderBD.ShowDialog() == DialogResult.OK)
+            {
+                tbPathBINT_oracle.Text = (System.IO.Path.GetFullPath(folderBD.SelectedPath).Substring(System.IO.Path.GetFullPath(folderBD.SelectedPath).Length - 1) != @"\" ? tbPathBINT_oracle.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath) + @"\" : tbPathBINT_oracle.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath));
+            }
+        }
+
+        private void bSelectMinconfigPath_bint_Click(object sender, EventArgs e)
+        {
+            var folderBD = new FolderBrowserDialog();
+
+            if (folderBD.ShowDialog() == DialogResult.OK)
+            {
+                tbPathBINT_minconfig.Text = (System.IO.Path.GetFullPath(folderBD.SelectedPath).Substring(System.IO.Path.GetFullPath(folderBD.SelectedPath).Length - 1) != @"\" ? tbPathBINT_minconfig.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath) + @"\" : tbPathBINT_minconfig.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath));
+            }
+        }
+
+        private void bSelectSolutionsPath_bb_Click(object sender, EventArgs e)
+        {
+            var folderBD = new FolderBrowserDialog();
+
+            if (folderBD.ShowDialog() == DialogResult.OK)
+            {
+                tbPathBB_solutions.Text = (System.IO.Path.GetFullPath(folderBD.SelectedPath).Substring(System.IO.Path.GetFullPath(folderBD.SelectedPath).Length - 1) != @"\" ? tbPathBB_solutions.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath) + @"\" : tbPathBB_solutions.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath));
+            }
+        }
+
+        private void bSelectPath_b24_local_Click(object sender, EventArgs e)
+        {
+            var folderBD = new FolderBrowserDialog();
+
+            if (folderBD.ShowDialog() == DialogResult.OK)
+            {
+                tbPathB24_local.Text = (System.IO.Path.GetFullPath(folderBD.SelectedPath).Substring(System.IO.Path.GetFullPath(folderBD.SelectedPath).Length - 1) != @"\" ? tbPathB24_local.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath) + @"\" : tbPathB24_local.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath));
+            }
+        }
+
+        private void bSaveOptions_Click(object sender, EventArgs e)
+        {
+            OptionsWrite();
+            Close();
+        }
+
+        private void bAcceptOptions_Click(object sender, EventArgs e)
+        {
+            OptionsWrite();
+        }
+
+        private void bCancelOptions_Click(object sender, EventArgs e)
+        {
+            Close();
+        }
+
+        private void bSelectPathToFfProfile_Click(object sender, EventArgs e)
+        {
+            var folderBD = new FolderBrowserDialog();
+
+            if (folderBD.ShowDialog() == DialogResult.OK)
+            {
+                tbPathToFfProfile.Text = (System.IO.Path.GetFullPath(folderBD.SelectedPath).Substring(System.IO.Path.GetFullPath(folderBD.SelectedPath).Length - 1) != @"\" ? tbPathToFfProfile.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath) + @"\" : tbPathToFfProfile.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath));
+            }
+        }
+
+        private void bSelectPathToFfExe_Click(object sender, EventArgs e)
+        {
+            var folderBD = new FolderBrowserDialog();
+
+            if (folderBD.ShowDialog() == DialogResult.OK)
+            {
+                tbPathToFfExe.Text = (System.IO.Path.GetFullPath(folderBD.SelectedPath).Substring(System.IO.Path.GetFullPath(folderBD.SelectedPath).Length - 1) != @"\" ? tbPathToFfExe.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath) + @"\firefox.exe" : tbPathToFfExe.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath));
+            }
+        }
+
+        private void bSelectMssqlPath_bint_odbc_Click(object sender, EventArgs e)
+        {
+            var folderBD = new FolderBrowserDialog();
+
+            if (folderBD.ShowDialog() == DialogResult.OK)
+            {
+                tbPathBINT_mssql_odbc.Text = (System.IO.Path.GetFullPath(folderBD.SelectedPath).Substring(System.IO.Path.GetFullPath(folderBD.SelectedPath).Length - 1) != @"\" ? tbPathBINT_mssql_odbc.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath) + @"\" : tbPathBINT_mssql_odbc.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath));
+            }
+        }
+
+        private void bSelectPath_Cluster_Click(object sender, EventArgs e)
+        {
+            var folderBD = new FolderBrowserDialog();
+
+            if (folderBD.ShowDialog() == DialogResult.OK)
+            {
+                tbPath_BUS_Cluster.Text = (System.IO.Path.GetFullPath(folderBD.SelectedPath).Substring(System.IO.Path.GetFullPath(folderBD.SelectedPath).Length - 1) != @"\" ? tbPath_BUS_Cluster.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath) + @"\" : tbPath_BUS_Cluster.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath));
+            }
+        }
+
+        private void bSelectPath_BUS_Business_Click(object sender, EventArgs e)
+        {
+            var folderBD = new FolderBrowserDialog();
+
+            if (folderBD.ShowDialog() == DialogResult.OK)
+            {
+                tbPath_BUS_Business.Text = (System.IO.Path.GetFullPath(folderBD.SelectedPath).Substring(System.IO.Path.GetFullPath(folderBD.SelectedPath).Length - 1) != @"\" ? tbPath_BUS_Business.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath) + @"\" : tbPath_BUS_Business.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath));
+            }
+        }
+
+        private void bSelectPath_BUS_SmallBusiness_Click(object sender, EventArgs e)
+        {
+            var folderBD = new FolderBrowserDialog();
+
+            if (folderBD.ShowDialog() == DialogResult.OK)
+            {
+                tbPath_BUS_SmallBusiness.Text = (System.IO.Path.GetFullPath(folderBD.SelectedPath).Substring(System.IO.Path.GetFullPath(folderBD.SelectedPath).Length - 1) != @"\" ? tbPath_BUS_SmallBusiness.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath) + @"\" : tbPath_BUS_SmallBusiness.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath));
+            }
+        }
+
+        private void bSelectPath_BUS_Expert_Click(object sender, EventArgs e)
+        {
+            var folderBD = new FolderBrowserDialog();
+
+            if (folderBD.ShowDialog() == DialogResult.OK)
+            {
+                tbPath_BUS_Expert.Text = (System.IO.Path.GetFullPath(folderBD.SelectedPath).Substring(System.IO.Path.GetFullPath(folderBD.SelectedPath).Length - 1) != @"\" ? tbPath_BUS_Expert.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath) + @"\" : tbPath_BUS_Expert.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath));
+            }
+        }
+
+        private void bSelectPath_BUS_Standart_Click(object sender, EventArgs e)
+        {
+            var folderBD = new FolderBrowserDialog();
+
+            if (folderBD.ShowDialog() == DialogResult.OK)
+            {
+                tbPath_BUS_Standart.Text = (System.IO.Path.GetFullPath(folderBD.SelectedPath).Substring(System.IO.Path.GetFullPath(folderBD.SelectedPath).Length - 1) != @"\" ? tbPath_BUS_Standart.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath) + @"\" : tbPath_BUS_Standart.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath));
+            }
+        }
+
+        private void bSelectPath_BUS_Start_Click(object sender, EventArgs e)
+        {
+            var folderBD = new FolderBrowserDialog();
+
+            if (folderBD.ShowDialog() == DialogResult.OK)
+            {
+                tbPath_BUS_Start.Text = (System.IO.Path.GetFullPath(folderBD.SelectedPath).Substring(System.IO.Path.GetFullPath(folderBD.SelectedPath).Length - 1) != @"\" ? tbPath_BUS_Start.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath) + @"\" : tbPath_BUS_Start.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath));
+            }
+        }
+
+        private void bSelectPath_BUS_FirstSite_Click(object sender, EventArgs e)
+        {
+            var folderBD = new FolderBrowserDialog();
+
+            if (folderBD.ShowDialog() == DialogResult.OK)
+            {
+                tbPath_BUS_FirstSite.Text = (System.IO.Path.GetFullPath(folderBD.SelectedPath).Substring(System.IO.Path.GetFullPath(folderBD.SelectedPath).Length - 1) != @"\" ? tbPath_BUS_FirstSite.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath) + @"\" : tbPath_BUS_FirstSite.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath));
+            }
+        }
+
+        private void bSelectPath_CP_business_process_Click(object sender, EventArgs e)
+        {
+            var folderBD = new FolderBrowserDialog();
+
+            if (folderBD.ShowDialog() == DialogResult.OK)
+            {
+                tbPath_CP_business_process.Text = (System.IO.Path.GetFullPath(folderBD.SelectedPath).Substring(System.IO.Path.GetFullPath(folderBD.SelectedPath).Length - 1) != @"\" ? tbPath_CP_business_process.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath) + @"\" : tbPath_CP_business_process.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath));
+            }
+        }
+
+        private void bSelectPath_CP_team_Click(object sender, EventArgs e)
+        {
+            var folderBD = new FolderBrowserDialog();
+
+            if (folderBD.ShowDialog() == DialogResult.OK)
+            {
+                tbPath_CP_team.Text = (System.IO.Path.GetFullPath(folderBD.SelectedPath).Substring(System.IO.Path.GetFullPath(folderBD.SelectedPath).Length - 1) != @"\" ? tbPath_CP_team.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath) + @"\" : tbPath_CP_team.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath));
+            }
+        }
+
+        private void bSelectPath_CP_company_Click(object sender, EventArgs e)
+        {
+            var folderBD = new FolderBrowserDialog();
+
+            if (folderBD.ShowDialog() == DialogResult.OK)
+            {
+                tbPath_CP_company.Text = (System.IO.Path.GetFullPath(folderBD.SelectedPath).Substring(System.IO.Path.GetFullPath(folderBD.SelectedPath).Length - 1) != @"\" ? tbPath_CP_company.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath) + @"\" : tbPath_CP_company.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath));
+            }
+        }
+
+        private void bSelectMssqlPath_bb_odbc_Click(object sender, EventArgs e)
+        {
+            var folderBD = new FolderBrowserDialog();
+
+            if (folderBD.ShowDialog() == DialogResult.OK)
+            {
+                tbPathBB_mssql_odbc.Text = (System.IO.Path.GetFullPath(folderBD.SelectedPath).Substring(System.IO.Path.GetFullPath(folderBD.SelectedPath).Length - 1) != @"\" ? tbPathBB_mssql_odbc.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath) + @"\" : tbPathBB_mssql_odbc.Text = System.IO.Path.GetFullPath(folderBD.SelectedPath));
+            }
+        }
+        #endregion
+    }
+
+    public static class Extensions
+    {
+        /// <summary>
+        /// Метод возвращает значение опции из xml файла. Если опция не найдена вернется пустая строка
+        /// </summary>
+        /// <param name="xpath">путь к ноде в формате xpath</param>
+        /// <returns>значение опции</returns>
+        public static string GetValue(this XmlDocument doc, string xpath)
+        {
+            if (doc.DocumentElement.SelectSingleNode(xpath) != null)
+                return doc.SelectSingleNode(xpath).InnerText;
+            else
+                return "";
+        }
+    }
+}

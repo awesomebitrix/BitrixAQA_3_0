@@ -1,0 +1,1248 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Windows.Forms;
+using Aqua.General;
+using Ionic.Zip;
+using System.Threading;
+using System.Xml;
+using System.IO;
+using System.Reflection;
+using Aqua.Selenium.SeleniumFramework;
+using Aqua.Selenium.General;
+using Aqua.Selenium.Object_Repository;
+using Aqua.Selenium.Object_Repository.Bitrix_24;
+using Aqua.Selenium.Test_Cases;
+
+namespace Aqua
+{
+    public partial class MainForm : Form
+    {
+        public static MainForm form;
+        Case_DistrInstallWizard distrInstallWizard = new Case_DistrInstallWizard();
+        AddReportToMantis addReportToMantis = new AddReportToMantis();
+
+        System.Collections.Generic.List<Tuple<CheckBox, ProgressBar, string>> baseToInstall = new System.Collections.Generic.List<Tuple<CheckBox, ProgressBar, string>>();
+        System.Collections.Generic.List<TreeNode> B24CasesCollection = new System.Collections.Generic.List<TreeNode>();
+        System.Collections.Generic.List<ProgressBar> pbToUse = new System.Collections.Generic.List<ProgressBar>();
+        System.Collections.Generic.List<Thread> CollectionOfUnzipThreads = new System.Collections.Generic.List<Thread>();
+        System.Collections.Generic.List<Thread> CollectionOfCheckFilesTRBThreads = new System.Collections.Generic.List<Thread>();
+        
+        public bool CheckFilesBB;
+        public bool CheckFilesBINT;
+        
+        Dictionary<object, UnzipThreads> dictUnzipThreads = new Dictionary<object, UnzipThreads>();
+        public delegate void LogDelegate(string text, bool timeStamp);
+
+        class UnzipThreads
+        {
+            public Thread thread;
+        }
+
+        class CheckFilesThreads
+        {
+            public Thread thread;
+        }
+
+        /// <summary>
+        /// Класс для дерева, заменяющий в нем даблклик на два отдельных клика. Помогает измежать бага .NET с даблкликом
+        /// </summary>
+        public class MyTreeView : TreeView
+        {
+            protected override void WndProc(ref Message m)
+            {
+                if (m.Msg == 0x0203)
+                {
+                    m.Msg = 0x0201;
+                }
+                base.WndProc(ref m);
+            }
+        }
+
+        /// <summary>
+        /// Метод реализует выставление/снятие всех флагов в дереве
+        /// </summary>
+        /// <param name="trNodeCollection"> Коллекция флагов</param>
+        /// <param name="isCheck"> Признак установки/снятия флагов</param>
+        private void CheckUncheckTreeNode(TreeNodeCollection trNodeCollection, bool isCheck)
+        {
+            foreach (TreeNode trNode in trNodeCollection)
+            {
+                trNode.Checked = isCheck;
+                if (trNode.Nodes.Count > 0)
+                    CheckUncheckTreeNode(trNode.Nodes, isCheck);
+            }
+        }
+        private void CheckUncheckTreeNode(TreeNode trNodeCollection, bool isCheck)
+        {
+            TreeNodeCollection Nodecollection = null;
+            Nodecollection.Add(trNodeCollection);
+            CheckUncheckTreeNode(Nodecollection, isCheck);
+        }
+
+        public MainForm(string[] args = null)
+        {
+            InitializeComponent();
+            form = this;
+            OptionsForm optionsForm = new OptionsForm();
+            FillBaseToInstallCollection();
+            B24CasesCollectionFill();
+            cbBrowsers.SelectedIndex = cbBrowsers.FindString("FireFox");
+            cbb24_localOrProduction.SelectedIndex = cbb24_localOrProduction.FindString("production");
+            tvBitrix24.Nodes[0].Expand();
+            tvBitrix24.AfterCheck += new System.Windows.Forms.TreeViewEventHandler(this.tv_AfterCheck);
+            tvBitrix24.AfterCheck += new System.Windows.Forms.TreeViewEventHandler(this.tv_AfterCheck1);
+            tvBitrix24.AfterCheck += new System.Windows.Forms.TreeViewEventHandler(this.tv_AfterCheck2);
+            tvBUS.Nodes[0].Expand();
+            tvBUS.AfterCheck += new System.Windows.Forms.TreeViewEventHandler(this.tv_AfterCheck);
+            tvBUS.AfterCheck += new System.Windows.Forms.TreeViewEventHandler(this.tv_AfterCheck1);
+            tvBUS.AfterCheck += new System.Windows.Forms.TreeViewEventHandler(this.tv_AfterCheck2);
+            tvBUS.AfterCheck += new System.Windows.Forms.TreeViewEventHandler(this.tv_AfterCheck3);
+            Shared.browserName = MainForm.form.cbBrowsers.SelectedItem.ToString();
+
+            //перемещаем последний лог в архив
+            if (File.Exists(Shared.StartupPath + "log.html"))
+            {
+                //File.AppendAllText(Misc.StartupPath + "ArchiveLog.log", File.ReadAllText(Misc.StartupPath + "log.log"));
+                //File.Delete(Misc.StartupPath + "log.log");
+
+                File.AppendAllText(Shared.StartupPath + "ArchiveLog.html", File.ReadAllText(Shared.StartupPath + "log.html"));
+                File.Delete(Shared.StartupPath + "log.html");
+            }
+
+            //начинаем работу
+            //Log.Gap();
+            Log.PlainTextToHTMLLog("<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">");
+            Log.PlainTextToHTMLLog("<div style=\"margin: 50px 0px 0px 50px;\"></div>");
+            Log.PlainTextToHTMLLog("<head><style>.plus, .minus { display: inline-block; padding-left: 20px;}.plus { background: url(plus.gif) no-repeat 5px 5px;} .minus { background: url(minus.gif) no-repeat 5px 5px; }</style><script>function collapse(id, link){var block = document.getElementById(id); if (block.style.display == \"none\"){block.style.display = \"block\";link.className = \"minus\";	}else{block.style.display = \"none\";link.className = \"plus\";}return false;}function collapseSpan(id, link){var block = document.getElementById(id);if (block.style.display == \"none\"){block.style.display = \"block\";}else{block.style.display =\"none\";}return false;}</script></head>");
+            Log.MesNormal("============ новая сессия " + DateTime.Now + " ============", false);
+            Log.Gap();
+
+            #region Работа с аргументами
+            if (!(args==null)&&(args[0].ToString() == "automatic"))
+            {
+                CheckUncheckTreeNode(tvBitrix24.Nodes, true);
+
+                //Если есть аргумент, выбираем браузер
+                foreach (string arg in args)
+                {
+                    if (arg == "Chrome")
+                    {
+                        cbBrowsers.SelectedIndex = cbBrowsers.FindString("Chrome");
+                        break;
+                    }
+                    else if (arg == "Ie")
+                    {
+                        cbBrowsers.SelectedIndex = cbBrowsers.FindString("IE");
+                        break;
+                    }
+                    else
+                        cbBrowsers.SelectedIndex = cbBrowsers.FindString("FireFox");
+                }
+
+                //Если есть аргумент, гоняем локальную БД
+                foreach (string arg in args)
+                {
+                    if (arg == "Local")
+                    {
+                        cbb24_localOrProduction.SelectedIndex = cbb24_localOrProduction.FindString("local");
+                        break;
+                    }
+                    else
+                        cbb24_localOrProduction.SelectedIndex = cbb24_localOrProduction.FindString("production");
+                }
+
+                //Если есть аргумент, не чистим кэш.
+                foreach (string arg in args)
+                {
+                    if (arg == "NotClear")
+                    {
+                        MainForm.form.cbClearCashe.Checked = false;
+                        break;
+                    }
+                    else
+                        MainForm.form.cbClearCashe.Checked = true;
+                }
+                //Если есть аргумент, ставим режим отладки
+                foreach (string arg in args)
+                {
+                    if (arg == "Debug")
+                    {
+                        MainForm.form.cbDebugMode.Checked = true;
+                        break;
+                    }
+                    else
+                        MainForm.form.cbDebugMode.Checked = false;
+                }
+                //Если есть аргумент, прогоняем создание новых порталов-эталонов
+                foreach (string arg in args)
+                {
+                    if (arg == "B24Portals")
+                    {
+                        MainForm.form.cbb24_Case_PortalRegistration.Checked = true;
+                        tcMain.SelectedTab = tcMain.TabPages["tpBitrix24"];
+                        break;
+                    }
+                    else
+                        MainForm.form.cbb24_Case_PortalRegistration.Checked = false;
+                }
+                //Если есть аргумент, ставим соответствующий тип БД
+                foreach (string arg in args)
+                {
+                    if (arg == "BUS_MSSQL")
+                    {
+                        cbBB_mssql.Checked = true;
+                        tcMain.SelectedTab = tcMain.TabPages["tpBUS"];
+                        break;
+                    }
+                    else
+                        cbBB_mssql.Checked = false;
+                }
+                foreach (string arg in args)
+                {
+                    if (arg == "BUS_MYSQL")
+                    {
+                        cbBB_mysql.Checked = true;
+                        tcMain.SelectedTab = tcMain.TabPages["tpBUS"];
+                        break;
+                    }
+                    else
+                        cbBB_mysql.Checked = false;
+                }
+                foreach (string arg in args)
+                {
+                    if (arg == "BUS_ORACLE")
+                    {
+                        cbBB_oracle.Checked = true;
+                        tcMain.SelectedTab = tcMain.TabPages["tpBUS"];
+                        break;
+                    }
+                    else
+                        cbBB_oracle.Checked = false;
+                }
+                #region аргументы для запуска тестов по одному
+                //Если есть аргумент, гоняем только соответствующий тест
+                string[,] Args = new string[,]
+                {
+                    {"B24Update", "cbb24_Case_Update"},
+                    {"B24ClearTestData", "cbb24_Case_clearTestData"},
+                    {"B24AddNewUsers", "cbb24_Case_inviteUsers"},
+                    {"B24BlogMessages", "cbb24_Case_blogMessages"},
+                    {"B24Tasks", "cbb24_Case_tasks"},
+                    {"B24AbsenseChart", "cbb24_Case_absenseChart"},
+                    {"B24Employees", "cbb24_Case_employees"},
+                    {"B24UserProfile", "cbb24_Case_profile"},
+                    {"B24CompanyStructure", "cbb24_Case_companyStructure"},
+                    {"B24Meeting", "cbb24_Case_meeting"},
+                    {"B24WebDav", "cbb24_Case_webdav"},
+                    {"B24Photogallery", "cbb24_Case_photogallery"},
+                    {"B24Lists", "cbb24_Case_lists"},
+                    {"B24Timeman", "cbb24_Case_timeman"},
+                    {"B24Settings", "cbb24_Case_settings"},
+                    {"B24Calendar", "cbb24_Case_calendar"},
+                    {"B24CRM", "cbb24_Case_CRM"}
+                };
+                string[,] Args1 = new string[,]
+                {
+                    {"BUS_Update", "cbBUS_Case_Update"},
+                    {"BUS_Main", "cbBUS_Case_Main"},
+                    {"BUS_Iblock", "cbBUS_Case_Iblock"},
+                    {"BUS_Catalog", "cbBUS_Case_Catalog"},
+                    {"BUS_Forum", "cbBUS_Case_Forum"},
+                    {"BUS_SEO", "cbBUS_Case_SEO"},
+                    {"BUS_Fileman", "cbBUS_Case_Fileman"}
+
+                };
+                List<string> Nodecollection = new List<string>();
+                foreach (string arg in args)
+                {
+                    for (int i = 0; i < Args1.GetLength(0); i++)
+                    {
+                        if (arg == Args1[i, 0])
+                        {
+                            Nodecollection.Add(Args1[i, 1]);
+                            tcMain.SelectedTab = tcMain.TabPages["tpBUS"];
+                        }
+                        if (arg == "BUS_Catalog")
+                        {
+                            cbBUS_business.Checked = true;
+                            cbBB_mysql.Checked = false;
+                            cbBB_mssql.Checked = false;
+                            cbBB_oracle.Checked = false;
+                        }
+                        else
+                        {
+                            cbBUS_business.Checked = false;
+                        }
+                        if (arg == "BUS_Forum")
+                        {
+                            foreach (string argument in args)
+                            {
+                                if (arg == "RE_ON")
+                                    rbRewriteEngineON.Checked = true;
+                                else if (arg == "RE_OFF")
+                                    rbRewriteEngineOFF.Checked = true;
+                                else if (arg == "RE_ALL")
+                                    rbRewriteEngineAll.Checked = true;
+                            }
+                        }
+                    }
+                }
+                foreach (string arg in args)
+                {
+                    for (int i = 0; i < Args.GetLength(0); i++)
+                    {
+                        if (arg == Args[i, 0])
+                        {
+                            Nodecollection.Add(Args[i, 1]);
+                            tcMain.SelectedTab = tcMain.TabPages["tpBitrix24"];
+                        }
+                    }
+
+                }
+                if (tcMain.SelectedTab == tcMain.TabPages["tpBUS"])
+                {
+                    if (Nodecollection != null && Nodecollection.Count != 0)
+                    {
+                        CheckUncheckTreeNode(tvBUS.Nodes, false);
+                        foreach (string arg in Nodecollection)
+                        {
+                            MainForm.form.tvBUS.Nodes[0].Nodes[arg].Checked = true;
+                            if (MainForm.form.tvBUS.Nodes[0].Nodes[arg].Nodes.Count > 0)
+                                this.CheckAllChildNodes(MainForm.form.tvBUS.Nodes[0].Nodes[arg], true);
+                        }
+                    }
+                }
+                else if (tcMain.SelectedTab == tcMain.TabPages["tpBitrix24"])
+                {
+                    if (Nodecollection != null && Nodecollection.Count != 0)
+                    {
+                        CheckUncheckTreeNode(tvBitrix24.Nodes, false);
+                        foreach (string arg in Nodecollection)
+                        {
+                            MainForm.form.tvBitrix24.Nodes[0].Nodes[arg].Checked = true;
+                            if (MainForm.form.tvBitrix24.Nodes[0].Nodes[arg].Nodes.Count > 0)
+                                this.CheckAllChildNodes(MainForm.form.tvBitrix24.Nodes[0].Nodes[arg], true);
+                        }
+                    }
+                }
+                #endregion
+                bDo_Click(null, null);
+                Environment.Exit(0);
+            }
+            #endregion
+        }
+
+        #region Work with unzip threads
+        class UnzipThreadWorkData
+        {
+            public string Edition;
+            public string Base;
+            public ProgressBar PB;
+            public Thread thr;
+            public CheckBox cBox;
+            public bool CheckFiles;
+        }
+
+        class CheckFilesTRBThreadWorkData
+        {
+            public Thread thr;
+            public CheckBox cBox;
+        }
+
+        //заполняем коллекцию чекбоксов установок
+        public void FillBaseToInstallCollection()
+        {
+            //BB
+            baseToInstall.Add(new Tuple<CheckBox, ProgressBar, string>(cbBB_mysql, pbBB_mysql, "BB"));
+            baseToInstall.Add(new Tuple<CheckBox, ProgressBar, string>(cbBB_mssql, pbBB_mssql, "BB"));
+            //baseToInstall.Add(new Tuple<CheckBox, ProgressBar, string>(cbBB_mssql_odbc, pbBB_mssql_odbc, "BB"));
+            baseToInstall.Add(new Tuple<CheckBox, ProgressBar, string>(cbBB_oracle, pbBB_oracle, "BB"));
+            baseToInstall.Add(new Tuple<CheckBox, ProgressBar, string>(cbBB_solutions, pbBB_solutions, "BB"));
+            baseToInstall.Add(new Tuple<CheckBox, ProgressBar, string>(cbBB_minconfig, pbBB_minconfig, "BB"));
+            //BINT
+            baseToInstall.Add(new Tuple<CheckBox, ProgressBar, string>(cbBINT_mysql, pbBINT_mysql, "BINT"));
+            baseToInstall.Add(new Tuple<CheckBox, ProgressBar, string>(cbBINT_mssql, pbBINT_mssql, "BINT"));
+            //baseToInstall.Add(new Tuple<CheckBox, ProgressBar, string>(cbBINT_mssql_odbc, pbBINT_mssql_odbc, "BINT"));
+            baseToInstall.Add(new Tuple<CheckBox, ProgressBar, string>(cbBINT_oracle, pbBINT_oracle, "BINT"));
+            baseToInstall.Add(new Tuple<CheckBox, ProgressBar, string>(cbBINT_minconfig, pbBINT_minconfig, "BINT"));
+            //BUS
+            baseToInstall.Add(new Tuple<CheckBox, ProgressBar, string>(cbBUS_cluster, pbBUS_cluster, "BUS"));
+            baseToInstall.Add(new Tuple<CheckBox, ProgressBar, string>(cbBUS_business, pbBUS_business, "BUS"));
+            baseToInstall.Add(new Tuple<CheckBox, ProgressBar, string>(cbBUS_small_business, pbBUS_small_business, "BUS"));
+            baseToInstall.Add(new Tuple<CheckBox, ProgressBar, string>(cbBUS_expert, pbBUS_expert, "BUS"));
+            baseToInstall.Add(new Tuple<CheckBox, ProgressBar, string>(cbBUS_standart, pbBUS_standart, "BUS"));
+            baseToInstall.Add(new Tuple<CheckBox, ProgressBar, string>(cbBUS_start, pbBUS_start, "BUS"));
+            baseToInstall.Add(new Tuple<CheckBox, ProgressBar, string>(cbBUS_first_site, pbBUS_first_site, "BUS"));
+            //CP
+            baseToInstall.Add(new Tuple<CheckBox, ProgressBar, string>(cbCP_business_process, pbCP_business_process, "CP"));
+            baseToInstall.Add(new Tuple<CheckBox, ProgressBar, string>(cbCP_team, pbCP_team, "CP"));
+            baseToInstall.Add(new Tuple<CheckBox, ProgressBar, string>(cbCP_company, pbCP_company, "CP"));
+        }
+
+        //заполняем коллекцию чекбоксов кейсов Б24
+        public void B24CasesCollectionFill()
+        {
+            B24CasesCollection.Add(MainForm.form.tvBitrix24.Nodes[0]);
+            B24CasesCollection.Add(MainForm.form.tvBitrix24.Nodes[0].Nodes["cbb24_Case_clearTestData"]);
+            B24CasesCollection.Add(MainForm.form.tvBitrix24.Nodes[0].Nodes["cbb24_Case_companyStructure"]);
+            B24CasesCollection.Add(MainForm.form.tvBitrix24.Nodes[0].Nodes["cbb24_Case_CRM"]);
+            B24CasesCollection.Add(MainForm.form.tvBitrix24.Nodes[0].Nodes["cbb24_Case_employees"]);
+            B24CasesCollection.Add(MainForm.form.tvBitrix24.Nodes[0].Nodes["cbb24_Case_inviteUsers"]);
+            B24CasesCollection.Add(MainForm.form.tvBitrix24.Nodes[0].Nodes["cbb24_Case_lists"]);
+            B24CasesCollection.Add(MainForm.form.tvBitrix24.Nodes[0].Nodes["cbb24_Case_meeting"]);
+            B24CasesCollection.Add(MainForm.form.tvBitrix24.Nodes[0].Nodes["cbb24_Case_photogallery"]);
+            B24CasesCollection.Add(MainForm.form.tvBitrix24.Nodes[0].Nodes["cbb24_Case_profile"]);
+            B24CasesCollection.Add(MainForm.form.tvBitrix24.Nodes[0].Nodes["cbb24_Case_tasks"]);
+            B24CasesCollection.Add(MainForm.form.tvBitrix24.Nodes[0].Nodes["cbb24_Case_webdav"]);
+            B24CasesCollection.Add(MainForm.form.tvBitrix24.Nodes[0].Nodes["cbb24_Case_absenseChart"]);
+            B24CasesCollection.Add(MainForm.form.tvBitrix24.Nodes[0].Nodes["cbb24_Case_blogMessages"]);
+            B24CasesCollection.Add(MainForm.form.tvBitrix24.Nodes[0].Nodes["cbb24_Case_calendar"]);
+            B24CasesCollection.Add(MainForm.form.tvBitrix24.Nodes[0].Nodes["cbb24_Case_timeman"]);
+            B24CasesCollection.Add(MainForm.form.tvBitrix24.Nodes[0].Nodes["cbb24_Case_settings"]);
+        }
+
+        private void bDo_Click(object sender, EventArgs e)
+        {
+            if (cbCopyUnzip.Checked == false && (cbCheckFilesTRB.Checked == false || cbCheckFilesTRB.Enabled == false))
+            {
+                foreach (var t in baseToInstall)
+                {
+                    var cbox = t.Item1;
+                    if (cbox.Checked && cbInstallDistrs.Checked)
+                    {
+                        Case_DistrInstallWizard.InstallWizard(cbox.Name.Substring(2, cbox.Name.IndexOf("_") - 2), cbox.Name.Substring(cbox.Name.IndexOf("_") + 1));
+                    }
+                }
+            }
+            else
+            {
+                #region Unzip
+                HashSet<string> checkFilesFlags = new HashSet<string>();
+                if (cbWaitForDistrAssemble.Checked == true)
+<<<<<<< local
+                {
+                    Log.MesNormal("Запущено ожидание сборки билдов перед установкой");
+=======
+                {                    
+>>>>>>> other
+                    List<string> EmailThemes = new List<string>();
+                    foreach (var t in baseToInstall)
+                    {
+                        if (t.Item1.Checked == true && t.Item1.Text == "MySQL" || t.Item1.Text == "MSSQL" || t.Item1.Text == "Oracle") { EmailThemes.Add("business_cluster_source.zip" + @"[\s\S\w\W]*?" + "has been successfully assembled"); }
+                        if (t.Item1.Checked == true && t.Item1.Text == "Кластер") { EmailThemes.Add("cluster_source.zip" + @"[\s\S\w\W]*?" + "has been successfully assembled"); }
+                        if (t.Item1.Checked == true && t.Item1.Text == "Бизнес") { EmailThemes.Add("business_source.zip" + @"[\s\S\w\W]*?" + "has been successfully assembled"); }
+                        if (t.Item1.Checked == true && t.Item1.Text == "Мал. бизнес") { EmailThemes.Add("small_business_source.zip" + @"[\s\S\w\W]*?" + "has been successfully assembled"); }
+                        if (t.Item1.Checked == true && t.Item1.Text == "Эксперт") { EmailThemes.Add("expert_source.zip" + @"[\s\S\w\W]*?" + "has been successfully assembled"); }
+                        if (t.Item1.Checked == true && t.Item1.Text == "Стандарт") { EmailThemes.Add("standard_source.zip" + @"[\s\S\w\W]*?" + "has been successfully assembled"); }
+                        if (t.Item1.Checked == true && t.Item1.Text == "Старт") { EmailThemes.Add("start_source.zip" + @"[\s\S\w\W]*?" + "has been successfully assembled"); }
+                        if (t.Item1.Checked == true && t.Item1.Text == "Первый сайт") { EmailThemes.Add("first_site_source.zip" + @"[\s\S\w\W]*?" + "has been successfully assembled"); }
+                    }
+                    var Themes = EmailThemes.Distinct();
+                    EmailThemes = Themes.ToList();
+                    Log.MesNormal("Email для ожидания уведомлений - " + Options.GetOption("/Options/NoteEmails/NoteEmail"));
+                    foreach(string EmailTheme in EmailThemes)
+                        Log.MesNormal("Ожидается сборка билда " + EmailTheme.Remove(EmailTheme.IndexOf("zip") + 3));
+                    WaitWhileEmailIncoming(EmailThemes, Options.GetOption("/Options/NoteEmails/NoteEmail"));
+                }
+                if (cbCopyUnzip.Checked == true)
+                {
+                    foreach (var t in baseToInstall)
+                    {
+                        var cb = t.Item1;
+                        if (cb.Checked == true)
+                        {
+                            //файл который надо распаковать
+                            string fileToUnzip;
+
+                            //если дистры BUS младших редакций
+                            if (cb.Name.Substring(2, cb.Name.IndexOf("_") - 2) == "BUS" || cb.Name.Substring(2, cb.Name.IndexOf("_") - 2) == "CP")
+                                fileToUnzip = Options.GetOption("/Options/PathSourceOfDistrs/Path") + Options.GetOption("/Options/DistrsFileNames/" + cb.Name.Substring(cb.Name.IndexOf("_") + 1) + "");
+                            else
+                                fileToUnzip = Options.GetOption("/Options/PathSourceOfDistrs/Path") + Options.GetOption("/Options/DistrsFileNames/" + cb.Name.Substring(2, cb.Name.IndexOf("_") - 2) + "");
+
+
+                            //куда распаковать
+                            string destinationFolder = Options.GetOption("/Options/PathToFolderWhereToInstall/edition[@title='" + cb.Name.Substring(2, cb.Name.IndexOf("_") - 2) + "']/" + cb.Name.Substring(cb.Name.IndexOf("_") + 1));
+                            //переименованная папка
+                            string renamedDestinationFolder = destinationFolder.Substring(0, destinationFolder.Length - 1) + "_" + DateTime.Now.Day.ToString() + DateTime.Now.Month.ToString() + DateTime.Now.Year.ToString() + DateTime.Now.Hour.ToString() + DateTime.Now.Minute.ToString() + DateTime.Now.Second.ToString();
+
+                            //проверяем, существует ли архив дистра
+                            if (File.Exists(fileToUnzip) == true)
+                            {
+                                //проверяем, существует ли папка для распаковки, если существует - меняем имя
+                                if (Directory.Exists(destinationFolder) == true)
+                                {
+                                    try
+                                    {
+                                        Directory.Move(destinationFolder, renamedDestinationFolder);
+                                        Log.MesNormal("Папка " + destinationFolder + " переименована в " + renamedDestinationFolder);
+                                    }
+                                    catch (Exception)
+                                    {
+                                        System.Windows.Forms.DialogResult result = MessageBox.Show(
+                                                                "Папка " + destinationFolder + " занята другим процессом и не может быть переименована. \r\n\r\nВыйди из папки в менеджере файлов и повтори попытку - нажми на ОК",
+                                                                "Ошибка",
+                                                                MessageBoxButtons.OKCancel,
+                                                                MessageBoxIcon.Error,
+                                                                MessageBoxDefaultButton.Button1);
+                                        if (result == System.Windows.Forms.DialogResult.OK)
+                                        {
+                                            try
+                                            {
+                                                Directory.Move(destinationFolder, renamedDestinationFolder);
+                                                Log.MesNormal("Папка " + destinationFolder + " переименована в " + renamedDestinationFolder);
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                Log.MesError("Папка " + destinationFolder + " не может быть переименована. Проверь папку. Распаковка остановлена \r\n\r\n" + ex);
+                                                return;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            Log.MesError("Распаковка прервана");
+                                            return;
+                                        }
+                                    }
+                                    //Directory.CreateDirectory(Options.GetOption("/Options/PathToFolderWhereToInstall/edition[@title='" + cb.Name.Substring(2, cb.Name.IndexOf("_") - 2) + "']/" + cb.Name.Substring(cb.Name.IndexOf("_") + 1)));
+                                }
+
+                                cb.Enabled = false;
+
+                                var controls = new UnzipThreads();
+                                controls.thread = new Thread(UnzipDistrs);
+                                controls.thread.Name = "UnzipThread_For_" + cb.Name.Substring(2).Trim();
+                                CollectionOfUnzipThreads.Add(controls.thread);
+                                Log.MesNormal("Идет распаковка " + fileToUnzip + " от " + File.GetLastWriteTime(fileToUnzip).ToString() + " в " + destinationFolder);
+
+                                //если надо проверять файлы после распаковки
+                                if (cbCheckFilesTRB.Enabled == true && cbCheckFilesTRB.Checked == true && !checkFilesFlags.Contains(t.Item3))
+                                {
+                                    checkFilesFlags.Add(t.Item3);
+                                    controls.thread.Start(new UnzipThreadWorkData
+                                                                {
+                                                                    Edition = cb.Name.Substring(2, cb.Name.IndexOf("_") - 2),
+                                                                    Base = cb.Name.Substring(cb.Name.IndexOf("_") + 1),
+                                                                    PB = t.Item2,
+                                                                    thr = controls.thread,
+                                                                    cBox = cb,
+                                                                    CheckFiles = true
+                                                                }
+                                                            );
+                                }
+                                else
+                                {
+                                    controls.thread.Start(new UnzipThreadWorkData
+                                    {
+                                        Edition = cb.Name.Substring(2, cb.Name.IndexOf("_") - 2),
+                                        Base = cb.Name.Substring(cb.Name.IndexOf("_") + 1),
+                                        PB = t.Item2,
+                                        thr = controls.thread,
+                                        cBox = cb,
+                                        CheckFiles = false
+                                    }
+                                                          );
+                                }
+                            }
+                            else
+                            {
+                                Log.MesError("Здесь такого файла нет " + fileToUnzip);
+                            }
+                        }
+                    }
+                }
+                #endregion
+            }
+            
+            //проверка всех урлов сайта
+            if (cbCheckAllSite.Checked)
+            {
+                if (tbCheckUrlsUrlToCheck.Text != "")
+                {
+                    string[] siteList = tbCheckUrlsUrlToCheck.Text.Split(new Char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+                    for (int siteID = 0; siteID < siteList.Count(); siteID++)
+                    {
+                        CheckUrls.Run(siteList[siteID].Trim());
+                    }
+                }
+                else
+                    Log.MesError("Введите урл для проверки");
+            }
+       
+            //проверка всех компонентов установки
+            if (cbCheckAllComponents.Checked)
+            {
+                foreach (var t in baseToInstall)
+                {
+                    var cbox = t.Item1;
+                    if (cbox.Checked && cbCheckAllComponents.Checked)
+                    {
+                       ComponentsTest.Run(cbox.Name.Substring(2, cbox.Name.IndexOf("_") - 2), cbox.Name.Substring(cbox.Name.IndexOf("_") + 1));
+                    }
+                }
+            }
+
+            //Битрикс 24
+            if (tcMain.SelectedTab  == tcMain.TabPages["tpBitrix24"])
+            {
+                if (cbb24_Case_PortalRegistration.Checked)
+                    Case_Bitrix24_PortalRegistration.Run();
+                foreach (TreeNode checkBox in B24CasesCollection)
+                {
+                    if (checkBox.Checked)
+                    {
+                        Case_Bitrix24_General.Run();
+                        break;
+                    }
+                }
+            }
+
+             //БУС
+            if (tcMain.SelectedTab == tcMain.TabPages["tpBUS"])
+            {
+                if (MainForm.form.tvBUS.Nodes[0].Nodes["cbBUS_Case_Iblock"].Checked)
+                {
+                    foreach (var t in baseToInstall)
+                    {
+                        var cbox = t.Item1;
+                        if (cbox.Checked)
+                        {
+                            TestEnvironment.DBType = cbox.Name.Substring(cbox.Name.IndexOf("_") + 1);
+                            Case_Iblock_General.Run();
+                        }
+                    }
+                }
+
+                if (MainForm.form.tvBUS.Nodes[0].Nodes["cbBUS_Case_Main"].Checked)
+                {
+                    foreach (var t in baseToInstall)
+                    {
+                        var cbox = t.Item1;
+                        if (cbox.Checked)
+                        {
+                            TestEnvironment.DBType = cbox.Name.Substring(cbox.Name.IndexOf("_") + 1);
+                            Case_Main_Run.Run();
+                        }
+                    }
+                }
+                if (MainForm.form.tvBUS.Nodes[0].Nodes["cbBUS_Case_Fileman"].Checked)
+                {
+                    foreach (var t in baseToInstall)
+                    {
+                        var cbox = t.Item1;
+                        if (cbox.Checked)
+                        {
+                            TestEnvironment.DBType = cbox.Name.Substring(cbox.Name.IndexOf("_") + 1);
+                            Case_Fileman_Run.Run();
+                        }
+                    }
+                }
+                
+                if (MainForm.form.tvBUS.Nodes[0].Nodes["cbBUS_Case_Catalog"].Checked)
+                {
+                    foreach (var t in baseToInstall)
+                    {
+                        var cbox = t.Item1;
+                        if (cbox.Checked && cbox.Text == "Бизнес")
+                        {
+                            TestEnvironment.DBType = cbox.Name.Substring(cbox.Name.IndexOf("_") + 1);
+                            Case_Catalog_Run.Run();
+                        }
+                        else if (cbox.Checked && cbox.Text != "Бизнес")
+                            Log.MesQuestion("Тест каталога не рабтает на установке " + cbox.Text + " . Необходима установка Бизнес");
+                    }
+                }
+
+                if (MainForm.form.tvBUS.Nodes[0].Nodes["cbBUS_Case_SEO"].Checked)
+                {
+                    foreach (var t in baseToInstall)
+                    {
+                        var cbox = t.Item1;
+                        if (cbox.Checked)
+                        {
+                            TestEnvironment.DBType = cbox.Name.Substring(cbox.Name.IndexOf("_") + 1);
+                            Case_Seo_Run.Run();
+                        }
+                    }
+                }
+
+                if (MainForm.form.tvBUS.Nodes[0].Nodes["cbBUS_Case_Forum"].Checked)
+                {
+                    List<string> DBTypes = new List<string>();
+                    if (cbBB_mysql.Checked) { DBTypes.Add("mysql"); }
+                    if (cbBB_mssql.Checked) { DBTypes.Add("mssql"); }
+                    if (cbBB_oracle.Checked) { DBTypes.Add("oracle"); }
+                    string RewriteEngineMode = null;
+                    if (rbRewriteEngineAll.Checked)
+                        RewriteEngineMode = "All";
+                    else if (rbRewriteEngineOFF.Checked)
+                        RewriteEngineMode = "OFF";
+                    else if (rbRewriteEngineON.Checked)
+                        RewriteEngineMode = "ON";
+                    if (DBTypes != null)
+                    {
+                        foreach (string DBType in DBTypes)
+                        {
+                            TestEnvironment.DBType = DBType;
+                            if (RewriteEngineMode == "All")
+                            {
+                                Case_Forum_Run.Run("ON");
+                                Case_Forum_Run.Run("OFF");
+                            }
+                            else
+                                Case_Forum_Run.Run(RewriteEngineMode);
+                        }
+                    }
+                }
+
+                if (MainForm.form.tvBUS.Nodes[0].Nodes["cbBUS_Case_Update"].Checked)
+                {
+                    List<string> DBTypes = new List<string>();
+                    if (cbBB_mysql.Checked) { DBTypes.Add("mysql"); }
+                    if (cbBB_mssql.Checked) { DBTypes.Add("mssql"); }
+                    if (cbBB_oracle.Checked) { DBTypes.Add("oracle"); }                   
+                    if (DBTypes != null)
+                    {
+                        foreach (string DBType in DBTypes)
+                        {
+                            TestEnvironment.DBType = DBType;
+                            Case_Update.Run();
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Ожидает письма о обновлении
+        /// </summary>
+        public void WaitWhileEmailIncoming(List<string> EmailThemes, string EmailAdress)
+        {
+            Pop.DeleteAllEmails(EmailAdress);
+            while (EmailThemes.Count > 0)
+            {
+                List<string> EmailThemes1 = new List<string>();
+                EmailThemes1 = EmailThemes;
+                foreach (string EmailTheme in EmailThemes)
+                {
+                    //string s = Pop.GetTextMsg(EmailAdress, EmailTheme);
+                    if (Pop.GetTextMsg(EmailAdress, EmailTheme) != "")
+                    {
+                        string s = EmailTheme.Remove(EmailTheme.IndexOf("zip") + 3);
+                        Log.MesPass("На почту " + EmailAdress + " пришло уведомление о сборке билда " + EmailTheme.Remove(EmailTheme.IndexOf("zip")+3));
+                        EmailThemes1.Remove(EmailTheme);
+                        break;
+                    }
+                }
+                EmailThemes = EmailThemes1;
+                TestFramework.Wait(30);
+            }
+        }
+
+
+        //распаковываем дистры
+        public void UnzipDistrs(object state)
+        {
+            var TWD = (UnzipThreadWorkData)state;
+            var PB = TWD.PB;
+            ZipFile zip = new ZipFile();
+
+            string fileToUnzip;
+
+            //файл который надо распаковать
+            //костылек для распаковки младших редакций БУС и КП
+            if (TWD.Edition == "BB" || TWD.Edition == "BINT")
+                fileToUnzip = Options.GetOption("/Options/PathSourceOfDistrs/Path") + Options.GetOption("/Options/DistrsFileNames/" + TWD.Edition + "");
+            else
+                fileToUnzip = Options.GetOption("/Options/PathSourceOfDistrs/Path") + Options.GetOption("/Options/DistrsFileNames/" + TWD.Base + "");
+
+            //куда распаковываем
+            string destinationFolder = Options.GetOption("/Options/PathToFolderWhereToInstall/edition[@title='" + TWD.Edition + "']/" + TWD.Base);    
+                
+            using (zip = ZipFile.Read(fileToUnzip))
+            {
+                int cnt = 0;
+                //зажигаем прогресс бар, передаем максимум
+                this.Invoke(new Action<ProgressBar, bool, int>(PBVisible), PB, true, zip.Count);
+
+                foreach (ZipEntry e in zip)
+                {
+                    cnt++;
+                    e.Extract(destinationFolder);
+                   
+                    this.Invoke(new Action<ProgressBar, int, Thread, string, string, CheckBox, bool>(UpdateProgressOfUnzip),
+                                                    PB, cnt, TWD.thr, fileToUnzip, destinationFolder, TWD.cBox, TWD.CheckFiles); 
+                }
+            }
+        }
+
+        void UpdateProgressOfUnzip(ProgressBar pb, int cnt, Thread thr, string fileToUnzip, string destinationFolder, CheckBox cb, bool checkFiles)
+        {
+            pb.PerformStep();
+            if (pb.Maximum == cnt)
+            {
+                pb.Value = 0;
+                pb.Visible = false;
+                thr.Abort();
+                CollectionOfUnzipThreads.Remove(thr);
+                cb.Enabled = true;
+                Log.MesPass("Архив " + fileToUnzip + " успешно распакован в " + destinationFolder);
+                
+                //проверяем соответствие модулей распакованной редакции
+                Log.MesNormal("Проверяем соответствие модулей в дистре " + destinationFolder);
+                Case_DistrInstallWizard.CheckModulesAccordance(cb.Name.Substring(2, cb.Name.IndexOf("_") - 2), cb.Name.Substring(cb.Name.IndexOf("_") + 1));
+
+                //смотрим, надо ли проверять распакованный дистр
+                if (checkFiles == true)
+                {
+                    var controls = new CheckFilesThreads();
+                    controls.thread = new Thread(DoCheckFilesTRB);
+                    controls.thread.Name = "ThreadCheckFilesTRB_For_" + cb.Name.Substring(2).Trim();
+                    CollectionOfCheckFilesTRBThreads.Add(controls.thread);
+                    controls.thread.Start(new CheckFilesTRBThreadWorkData
+                                            {
+                                                thr = controls.thread,
+                                                cBox = cb
+                                            }
+                                         );
+                }
+
+                if (cbInstallDistrs.Checked == true && CollectionOfUnzipThreads.Count == 0 && CollectionOfCheckFilesTRBThreads.Count == 0)
+                {
+                    foreach (var t in baseToInstall)
+                    {
+                        var cbox = t.Item1;
+                        if (cbox.Checked == true)
+                        {
+                            Case_DistrInstallWizard.InstallWizard(cbox.Name.Substring(2, cbox.Name.IndexOf("_") - 2), cbox.Name.Substring(cbox.Name.IndexOf("_") + 1));
+                        }
+                    }
+                }
+            }
+        }
+
+        void PBVisible(ProgressBar pb, bool TrueFalse, int maxValue)
+        {
+            pb.Visible = TrueFalse;
+            pb.Maximum = maxValue;
+            pb.Step = 1;
+        }
+        #endregion
+
+        public void DoCheckFilesTRB(object state)
+        {
+            string result = "";
+            string listBak = "";
+            string listThumbsDB = "";
+            string listDS_Store = "";
+            string listReadOnly = "";
+
+            bool badFilesExists = false;
+
+            var CFTWD = (CheckFilesTRBThreadWorkData)state;
+            var cb = CFTWD.cBox;
+
+            string destinationFolder = Options.GetOption("/Options/PathToFolderWhereToInstall/edition[@title='" + cb.Name.Substring(2, cb.Name.IndexOf("_") - 2) + "']/" + cb.Name.Substring(cb.Name.IndexOf("_") + 1));
+            var dir = new DirectoryInfo(destinationFolder);
+            var files = Directory.GetFiles(destinationFolder, "*.*", SearchOption.AllDirectories);
+
+            tbLog.Invoke(new LogDelegate(Log.MesNormal), "Идет проверка дистрибутива " + cb.Name.Substring(2).Trim() + " на файлы для чтения, thumbs.db и *.bak и другие", true);
+            
+            foreach (var file in files)
+            {
+                if (file.EndsWith(".bak", StringComparison.OrdinalIgnoreCase))
+                {
+                    listBak += "                                      " + file.ToString() + "\r\n";
+                }
+
+                if (file.EndsWith("Thumbs.db", StringComparison.OrdinalIgnoreCase))
+                {
+                    listThumbsDB += "                                      " + file.ToString() + "\r\n";
+                }
+
+                if (file.EndsWith(".DS_Store", StringComparison.OrdinalIgnoreCase))
+                {
+                    listDS_Store += "                                      " + file.ToString() + "\r\n";
+                }
+
+                if ((File.GetAttributes(file) & FileAttributes.ReadOnly) != 0)
+                {
+                    listReadOnly += "                                      " + file.ToString() + "\r\n";
+                }
+            }
+
+            if (listBak != "" || listThumbsDB != "" || listDS_Store != "" || listReadOnly != "")
+            {
+                if (listBak != "")
+                {
+                    result += "                                      " + "Файлы *.bak: \r\n";
+                    result += listBak;
+                    result += "\r\n";
+                }
+                if (listThumbsDB != "")
+                {
+                    result += "                                      " + "Файлы Thumbs.db: \r\n";
+                    result += listThumbsDB;
+                    result += "\r\n";
+                }
+                if (listDS_Store != "")
+                {
+                    result += "                                      " + "Файлы .DS_Store \r\n";
+                    result += listDS_Store;
+                    result += "\r\n";
+                }
+                if (listReadOnly != "")
+                {
+                    result += "                                      " + "Файлы только для чтения: \r\n";
+                    result += listReadOnly;
+                }
+
+                badFilesExists = true;
+
+                tbLog.Invoke(new LogDelegate(Log.MesNormal), "", false);
+                tbLog.Invoke(new LogDelegate(Log.MesError), "В дистрибутиве " + destinationFolder + " найдены плохие файлы: \r\n" + result, true);   
+            }
+            else
+            {
+                badFilesExists = false;
+                tbLog.Invoke(new LogDelegate(Log.MesPass), "В дистрибутиве " + destinationFolder + " все чисто", true);
+            }
+
+            //завершаем поток на проверку файлов
+            this.Invoke(new Action<bool, Thread, bool, string>(UpdateProgressCheckFilesTRB), true, CFTWD.thr, badFilesExists, result);
+        }
+
+        void UpdateProgressCheckFilesTRB(bool halt, Thread thr, bool badFilesExists, string result)
+        {
+            if (halt == true)
+            {
+                thr.Abort();
+                CollectionOfCheckFilesTRBThreads.Remove(thr);
+
+                //добавляем ошибки в мантис
+                if (badFilesExists == true)
+                {
+                    AddReportToMantis.AddReport("Плохие файлы в дистрибутиве", result, "main", false);
+                }
+
+                //смотрим надо ли установить дистры
+                if (cbInstallDistrs.Checked == true && CollectionOfUnzipThreads.Count == 0 && CollectionOfCheckFilesTRBThreads.Count == 0)
+                {
+                    foreach (var t in baseToInstall)
+                    {
+                        var cbox = t.Item1;
+                        if (cbox.Checked == true)
+                        {
+                            Case_DistrInstallWizard.InstallWizard(cbox.Name.Substring(2, cbox.Name.IndexOf("_") - 2), cbox.Name.Substring(cbox.Name.IndexOf("_") + 1));
+                        }
+                    }
+                }
+            }
+        }
+
+        //останавливаем распаковку всех дистров
+        private void bStopAllUnzip_Click(object sender, EventArgs e)
+        {
+            System.Windows.Forms.DialogResult result = MessageBox.Show(
+                   "Остановить распаковку всех архивов?",
+                   "Остановка распаковки",
+                   MessageBoxButtons.OKCancel,
+                   MessageBoxIcon.Warning,
+                   MessageBoxDefaultButton.Button1);
+            if (result == System.Windows.Forms.DialogResult.OK)
+            {
+                foreach (var thr in CollectionOfUnzipThreads)
+                {
+                    thr.Abort();
+                }
+
+                CollectionOfUnzipThreads.Clear();
+
+                foreach (var t in baseToInstall)
+                {
+                    t.Item2.Visible = false;
+                    t.Item2.Value = 0;
+                }
+
+                Log.MesError("Распаковка всех архивов остановлена");
+            }
+        }
+
+        private void tbLog_TextChanged(object sender, EventArgs e)
+        {
+            tbLog.SelectionStart = tbLog.Text.Length;
+            tbLog.ScrollToCaret();
+        }
+
+        private void bOptions_Click(object sender, EventArgs e)
+        {
+            OptionsForm.form.ShowDialog();
+        }
+
+        private void cbDistrBB_CheckedChanged(object sender, EventArgs e)
+        {
+            if (cbDistrBB.Checked == true)
+            {
+                cbBB_mysql.Checked = true;
+                cbBB_mssql.Checked = true;
+                cbBB_oracle.Checked = true;
+                cbBB_solutions.Checked = true;
+            }
+            else
+            {
+                cbBB_mysql.Checked = false;
+                cbBB_mssql.Checked = false;
+                cbBB_oracle.Checked = false;
+                cbBB_solutions.Checked = false;
+            }
+        }
+
+        private void cbCheckFilesTRB_CheckedChanged(object sender, EventArgs e)
+        {
+            if (cbCopyUnzip.Checked == true)
+            {
+                cbCheckFilesTRB.Enabled = true;
+            }
+            else 
+            {
+                cbCheckFilesTRB.Enabled = false;
+            }
+        }
+
+        private void cbCopyUnzip_CheckedChanged(object sender, EventArgs e)
+        {
+            if (cbCopyUnzip.Checked == true)
+            {
+                cbCheckFilesTRB.Enabled = true;
+            }
+            else
+            {
+                cbCheckFilesTRB.Enabled = false;
+            }
+        }
+
+        private void richTextBox1_LinkClicked(object sender, LinkClickedEventArgs e)
+        {
+            System.Diagnostics.Process.Start(e.LinkText);
+        }
+
+        private void bClearLog_Click(object sender, EventArgs e)
+        {
+            tbLog.Text = "";
+        }
+
+        private void bDontPush_Click(object sender, EventArgs e)
+        {
+            TestDevelopment.RichoDev();
+        }
+
+        private void bDoLeha_Click(object sender, EventArgs e)
+        {
+            TestDevelopment.CyraxDev();
+        }
+
+        private void bYuryRun_Click(object sender, EventArgs e)
+        {
+            TestDevelopment.MythDev();
+        }
+
+        private void cbDistrOther_CheckedChanged(object sender, EventArgs e)
+        {
+            if (cbDistrOther.Checked == true)
+            {
+                cbBUS_cluster.Checked = true;
+                cbBUS_business.Checked = true;
+                cbBUS_small_business.Checked = true;
+                cbBUS_expert.Checked = true;
+                cbBUS_standart.Checked = true;
+                cbBUS_start.Checked = true;
+                cbBUS_first_site.Checked = true;
+            }
+            else
+            {
+                cbBUS_cluster.Checked = false;
+                cbBUS_business.Checked = false;
+                cbBUS_small_business.Checked = false;
+                cbBUS_expert.Checked = false;
+                cbBUS_standart.Checked = false;
+                cbBUS_start.Checked = false;
+                cbBUS_first_site.Checked = false;
+            }
+        }
+
+        private void cbDistrBINT_CheckedChanged(object sender, EventArgs e)
+        {
+            if (cbDistrBINT.Checked == true)
+            {
+                cbBINT_mysql.Checked = true;
+                cbBINT_mssql.Checked = true;
+                cbBINT_mssql_odbc.Checked = true;
+                cbBINT_oracle.Checked = true;
+            }
+            else
+            {
+                cbBINT_mysql.Checked = false;
+                cbBINT_mssql.Checked = false;
+                cbBINT_mssql_odbc.Checked = false;
+                cbBINT_oracle.Checked = false;
+            }
+        }
+
+        private void cbb24_Case_PortalRegistration_CheckedChanged(object sender, EventArgs e)
+        {
+            if (cbb24_Case_PortalRegistration.Checked == true)
+            {
+                cbb24_CasePR_Border.Visible = true;
+                cbb24_CasePR_Ru.Visible = true;
+                cbb24_CasePR_Com.Visible = true;
+                cbb24_CasePR_De.Visible = true;
+                cbb24_CasePR_Ua.Visible = true;
+                cbb24_CasePR_Etalon.Visible = true;
+                if (cbb24_CasePR_Etalon.Checked == false)
+                    cbb24_CasePR_LastID.Visible = true;
+            }
+            else
+            {
+                cbb24_CasePR_Border.Visible = false;
+                cbb24_CasePR_Ru.Visible = false;
+                cbb24_CasePR_Com.Visible = false;
+                cbb24_CasePR_De.Visible = false;
+                cbb24_CasePR_Ua.Visible = false;
+                cbb24_CasePR_Etalon.Visible = false;
+                cbb24_CasePR_LastID.Visible = false;
+            }
+
+        }
+
+        private void cbb24_CasePR_Etalon_CheckedChanged(object sender, EventArgs e)
+        {
+            if (cbb24_CasePR_Etalon.Checked == true)
+                cbb24_CasePR_LastID.Visible = false;
+            else
+                cbb24_CasePR_LastID.Visible = true;
+        }
+
+        private void checkBox2_CheckedChanged(object sender, EventArgs e)
+        {
+            if (cbDistrCP.Checked == true)
+            {
+                cbCP_business_process.Checked = true;
+                cbCP_team.Checked = true;
+                //cbCP_company.Checked = true;
+            }
+            else
+            {
+                cbCP_business_process.Checked = false;
+                cbCP_team.Checked = false;
+                //cbCP_company.Checked = false;
+            }
+        }
+
+        private void rtbLog_LinkClicked(object sender, LinkClickedEventArgs e)
+        {
+            System.Diagnostics.Process.Start(e.LinkText);
+        }
+
+        private void bNastyaRun_Click(object sender, EventArgs e)
+        {
+            TestDevelopment.NastyaDev();
+        }
+
+        private void bb24_do_Click(object sender, EventArgs e)
+        {
+            Case_Bitrix24_General.Run();
+        }
+
+        private void tpBitrix24_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void cbBrowsers_SelectedValueChanged(object sender, EventArgs e)
+        {
+            Shared.browserName = MainForm.form.cbBrowsers.SelectedItem.ToString();
+        }
+
+        private void tv_AfterCheck(object sender, TreeViewEventArgs e)
+        {
+            // The code only executes if the user caused the checked state to change. 
+            if (e.Action != TreeViewAction.Unknown)
+            {
+                if (e.Node.Nodes.Count > 0)
+                {
+                    /* Calls the CheckAllChildNodes method, passing in the current 
+                    Checked value of the TreeNode whose checked state changed. */
+                    this.CheckAllChildNodes(e.Node, e.Node.Checked);
+                }
+            }
+        }
+
+        //Этот обработчик выставляет флаг у родилеского узла(кроме корня), если хоть один из дочерних отмечен
+        //Это нужно чтобы не было ситуации, когда часть теста включена, но сам тест выключен.
+        private void tv_AfterCheck1(object sender, TreeViewEventArgs e)
+        {
+            if (e.Action != TreeViewAction.Unknown)
+            {
+                if (e.Node.Checked && e.Node.Level == 2)
+                    e.Node.Parent.Checked = true;
+            }
+        }
+
+        //Этот обработчик снимает флаг у родительского узла, если снимаем последний флаг у дочерних элементов.
+        //Сделано, чтобы не гонять пустые тесты
+        private void tv_AfterCheck2(object sender, TreeViewEventArgs e)
+        {
+            if (e.Action != TreeViewAction.Unknown)
+            {
+                if (!e.Node.Checked && e.Node.Level == 2)
+                {
+                    foreach (TreeNode node in e.Node.Parent.Nodes)
+                    {
+                        if (node.Checked)
+                            return;
+                    }
+                    e.Node.Parent.Checked = false;
+                }
+            }
+        }
+
+        //Этот обработчик показывает/скрывает RewriteEngine для форума
+        private void tv_AfterCheck3(object sender, TreeViewEventArgs e)
+        {
+            if (MainForm.form.tvBUS.Nodes[0].Nodes["cbBUS_Case_Forum"].Checked)
+            {
+                gbRewriteEngine.Visible = true;
+                rbRewriteEngineAll.Visible = true;
+                rbRewriteEngineOFF.Visible = true;
+                rbRewriteEngineON.Visible = true;
+            }
+            else
+            {
+                gbRewriteEngine.Visible = false;
+                rbRewriteEngineAll.Visible = false;
+                rbRewriteEngineOFF.Visible = false;
+                rbRewriteEngineON.Visible = false;
+            }
+        }
+
+        // Updates all child tree nodes recursively. 
+        private void CheckAllChildNodes(TreeNode treeNode, bool nodeChecked)
+        {
+            foreach (TreeNode node in treeNode.Nodes)
+            {
+                node.Checked = nodeChecked;
+                if (node.Nodes.Count > 0)
+                {
+                    // If the current node has child nodes, call the CheckAllChildsNodes method recursively. 
+                    this.CheckAllChildNodes(node, nodeChecked);
+                }
+            }
+        }
+    }
+}

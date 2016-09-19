@@ -1,0 +1,9 @@
+--- BitrixAQA.csproj
++++ BitrixAQA.csproj
+@@ -109,5 +110,5 @@
+     <Compile Include="Selenium\Object Repository\Modules\Seo\TO_Robots.cs" />
+-    <Compile Include="Selenium\Object Repository\Modules\Seo\TO_Sitemap.cs" />	
++    <Compile Include="Selenium\Object Repository\Modules\Seo\TO_Sitemap.cs" />
+     <Compile Include="Selenium\Test Cases\Bitrix 24\BlogMessages\Case_Bitrix24_BlogMessages_Defects.cs" />
+     <Compile Include="Selenium\Test Cases\Bitrix 24\Calendar\Case_Bitrix24_Calendar.cs" />
+     <Compile Include="Selenium\Test Cases\Bitrix 24\Calendar\Case_Bitrix24_Calendar_Defects.cs" />

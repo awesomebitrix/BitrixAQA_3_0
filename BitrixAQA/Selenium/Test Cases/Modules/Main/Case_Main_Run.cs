@@ -1,0 +1,30 @@
+﻿using System;
+using System.Collections.Generic;
+using BitrixAQA.General;
+using BitrixAQA.Selenium.Framework;
+using BitrixAQA.Selenium.General;
+
+namespace BitrixAQA.Selenium.Test_Cases
+{
+    /// <summary>
+    /// Тест проверки главного модуля
+    /// </summary>
+    class Case_Main_Run
+    {
+        /// <summary>
+        /// Общий раннер класса
+        /// </summary>
+        public static void Run()
+        {
+            Log.Gap();
+            Log.NodeOpen("Тест Главного модуля");
+            BitrixFramework.OpenURL("http://" + Options.GetOption("/Options/URLS/edition[@title='BB']/mysql"));
+            Case_General_Login.Login(TestUsers.Admin.Login, TestUsers.Admin.Password);
+            List<Action> TestCases = new List<Action>();
+            TestCases.Add(() => Case_Main_Users.Run());
+            Shared.Execute(TestCases);
+
+            Log.NodeClose();
+        }
+    }
+}

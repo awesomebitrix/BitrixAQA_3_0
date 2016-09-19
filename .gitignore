@@ -1,0 +1,16 @@
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+build/
+[Bb]in/
+[Oo]bj/
+
+# OS generated files #
+ehthumbs.db
+Thumbs.db
+
+# Visual Studio profiler
+*.psess
+*.vsp
+*.vspx

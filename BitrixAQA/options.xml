@@ -1,0 +1,53 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Options>
+    <PathToFolderWhereToInstall>
+        <edition title="BB">
+            <mysql />
+        </edition>
+    </PathToFolderWhereToInstall>
+    <URLS>
+        <edition title="BB">
+            <mysql />
+        </edition>
+    </URLS>
+    <ConnectionString>
+        <mysql />
+        <mysql_port />
+        <mssql_odbc />
+    </ConnectionString>
+    <firefox_options>
+        <pathToFirefoxExe />
+        <pathToFirefoxProfile />
+    </firefox_options>
+    <CheckUrls_options>
+        <url />
+        <login />
+        <password />
+    </CheckUrls_options>
+    <users>
+        <user profile="Admin">
+            <Name />
+            <LastName />
+            <Email />
+            <Login />
+            <Password />
+            <Avatar />
+        </user>
+        <user profile="Intra1">
+            <Name>Семен</Name>
+            <LastName>Синичкин</LastName>
+            <Email />
+            <Login>semen</Login>
+            <Password>111111</Password>
+            <Avatar>avatar_semen.jpg</Avatar>
+        </user>
+        <user profile="Intra2">
+            <Name>Иван</Name>
+            <LastName>Иванов</LastName>
+            <Email />
+            <Login>Ivan</Login>
+            <Password>111111</Password>
+            <Avatar>avatar_semen.jpg</Avatar>
+        </user>
+    </users>
+</Options>

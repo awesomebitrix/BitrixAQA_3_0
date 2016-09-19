@@ -1,0 +1,82 @@
+﻿Краткое руководство по написанию автоматизированных скриптов.
+
+О длине XPath объекта:
+
+Длина XPath объекта должна быть максимально короткой, но достаточной длины для его корректной идентификации.
+Например, если объект успешно находится по XPath //div[@id='menu-groups-group1'], 
+то не стоит делать XPath этого объекта //div[@id='menu']//div[@class='menu-items-block menu-groups']//div[@id='menu-groups-menu1'].
+Объект с длинным XPath находится вебдрайвером потеницально дольше объекта с коротким XPath.
+
+Допустимые объекты:
+
+Кнопка - Button - любые объекты для нажатия, кроме ссылок, но можно и ссылки сюда отнести
+Текстбокс - Textbox - все поля ввода, большие и маленькие
+Дропдаун - Dropdown - выпадающие списки
+Область - Region - все области, некоторые диалоги
+Ссылка - Link - явные ссылки не обрамленные визуально в кнопки. Кнопки описываются выше
+Чекбокс - Checkbox - все чекбоксы
+Фрейм - Frame или IFrame - все фреймы и айфреймы
+Радиобатон - RadioButton - радиокнопки выбора
+Диалог - Dialog - явные диалоги, предпочтительней использовать Region
+
+Правила оформления текстовых объектов:
+
+- объект должен иметь лаконичное описание summary
+- тип объекта - Кнопка, Текстбокс и т.д.
+- уникальное лаконичное название - Button_Submit
+	- если объект относится к какому-то диалогу, его название должно быть в названии объекта, например, Button_FileDielog_Open
+	- не надо разделять каждое слово нижним подчеркиванием, например:
+	плохое название:
+	Region_File_Dialog_Finder_User_Absence
+	
+	хорошее название:
+	Region_FileDialog_FinderUserAbsence
+- внутреннее лаконичное описание (используется для лога), например, "Кнопка Подтвердить"
+- название объекта не должно быть слишком большим, например:
+
+DropDown_Location_Country_For_Individual_Person_At_Order_Make - плохое название объекта
+DropDown_Location_IPerson - хорошее название объекта
+
+Пример правильно описанного объекта:
+		
+		/// <summary>
+        /// Кнопка Диалог приглашения Подтвердить
+        /// </summary>
+        public static WebItem Button_InviteDialog_Submit
+        {
+            get
+            {
+                return new WebItem(By.XPath("//div[@class='auth-field-value']"), "Кнопка Подтвердить");
+            }
+        }
+
+Пример плохо описанного объекта:
+
+		/// <summary>
+        /// выбрать из структуры когда появляется при наведении мышки в правый верхний угол дальнего появившегося объекта
+        /// </summary>
+        public static WebItem Select_Structure_Absence_which_creates_after_point_mouse
+        {
+            get
+            {
+                return new WebItem(By.XPath("//div[@id='single-employee-popup']//div[@id='popup-window-content-single-employee-popup']//div[@class='finder-box-tabs-content']//div[@id='single-employee-popup']//div[@id='popup-window-content-single-employee-popup']//div[@class='finder-box-tabs-content']//div[@id='BXAbsence']//a[@id='single-user-choice']"), "выбрать из структуры когда появляется при наведении мышки в правый верхний угол дальнего появившегося объекта");
+            }
+        }
+		
+- Все объекты хранятся в папке Selenium\Object Repository в файлах с префиксом TO_*.cs, например, TO_BlogMessages.cs
+	Иерархия расположения файла определяется по ситуации, например, Selenium\Object Repository\Modules\BlogMessages\TO_BlogMessages.cs
+- Имя класса с объектами должно содержать префикс TO (обычно создается автоматически из названия файла), например, 
+	class TO_Bitrix24_AbsenseChart
+    {
+	}
+		
+Правила написания кейсов.
+
+- Кейсы хранятся в папке - Selenium\Test Cases\ в файлах с префиксом Case_*.cs, например, Case_DistrInstallWizard.cs
+- Имя класса с кейсом должно содержать префикс Case (обычно создается автоматически из названия файла), например,
+
+	class Case_DistrInstallWizard
+    {
+	}
+
+- Каждый кейс может иметь главный метод Run(), а также вспомогателые методы

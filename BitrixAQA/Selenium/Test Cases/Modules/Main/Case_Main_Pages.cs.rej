@@ -1,0 +1,162 @@
+--- Case_Main_Pages.cs
++++ Case_Main_Pages.cs
+@@ -37,155 +40,12 @@
+         public static void Clear(string DBType)
+         {
+             Log.Gap();
+             Log.MesNormal("Старт очистки тестовых данных");
+             TO_Pages.Button_MainMenuPageName("", "Главная").Click();
+-            // удаляем страничку, если она есть в меню
+-            if (TO_Pages.Button_MainMenuPageName("originalonost.php", "Оригинальность").Exists())
+-            {
+-                Log.MesNormal("Найдена тестовая страница Оригинальность с прошлого теста. Удаляем");
+-                TO_Pages.Button_MainMenuPageName("originalonost.php", "Оригинальность").Click();
+-                // удаляем страницу, подтверждаем страницу
+-                TO_AdminPanel.Button_MenuEditPage.Click();
+-                TO_AdminPanel.Button_DeletePage.Click();
+-                TO_General.Region_Wait.WaitWhileElementExists();
+-                TO_AdminPanel.Button_YesDelete.ClickAndWait();
+-                //проверяем, что страница удалена
+-                if (TO_Pages.Button_MainMenuPageName("originalonost.php", "Оригинальность").Exists())
+-                {
+-                    Log.MesError("Тестовая страница Оригинальность не удалилась, выполнение теста прервано.");
+-                    return;
+-                }
+-                else
+-                {
+-                    Log.MesPass("Тестовая страница Оригинальность удалена.");
+-                }
+-            }
+-            // проверяем что файла физически нету (в меню может не быть пункта, а файл может быть)
+-            else
+-            {
+-                // идем на стр, если 404 - ок, если нет удаляем
+-                TestFramework.OpenURL(TestFramework.WebDriver.Url + "originalonost.php", CheckPageOnErrors: false);
+-                if (TO_General.Region_404ErrorMessage.Exists())
+-                {
+-                    Log.MesPass("Видим 404 ошибку (ЭТО ВЕРНО), страница Оригинальность физически не существует");
+-                }
+-                else
+-                {
+-                    Log.MesNormal("404 ошибка не отображается, страница Оригинальность существует, удаляем");
+-                    // удаляем страницу, подтверждаем страницу
+-                    TO_AdminPanel.Button_MenuEditPage.Click();
+-                    TO_AdminPanel.Button_DeletePage.Click();
+-                    TO_General.Region_Wait.WaitWhileElementExists();
+-                    TO_AdminPanel.Button_YesDelete.ClickAndWait();
+-                    // проверяем снова, 404 - ок
+-                    TestFramework.OpenURL(TestFramework.WebDriver.Url.Replace("?clear_cache=Y", "originalonost.php"), CheckPageOnErrors: false);
+-                    if (TO_General.Region_404ErrorMessage.Exists())
+-                    {
+-                        Log.MesPass("Видим 404 ошибку (ЭТО ВЕРНО), страница Оригинальность физически не существует");
+-                    }
+-                    else
+-                    {
+-                        Log.MesError("Тестовая страница Оригинальность не удалилась, выполнение теста прервано.");
+-                        return;
+-                    }
+-                }
+-            }
+-            Case_Forum_Run.SetRewriteEngineMode(DBType, "ON");
+-            // удаляем русскую страничку
+-            if (TO_Pages.Button_MainMenuPageName("А вот и русская страница.php", "А вот и русская страница").Exists())
+-            {
+-                Log.MesNormal("Найдена тестовая страница А вот и русская страница с прошлого теста. Удаляем");
+-                TO_Pages.Button_MainMenuPageName("А вот и русская страница.php", "А вот и русская страница").Click();
+-                // удаляем страницу, подтверждаем страницу
+-                TO_AdminPanel.Button_MenuEditPage.Click();
+-                TO_AdminPanel.Button_DeletePage.Click();
+-                TO_General.Region_Wait.WaitWhileElementExists();
+-                TO_AdminPanel.Button_YesDelete.ClickAndWait();
+-                //проверяем, что страница удалена
+-                if (TO_Pages.Button_MainMenuPageName("А вот и русская страница.php", "А вот и русская страница").Exists())
+-                {
+-                    Log.MesError("Тестовая страница А вот и русская страница не удалилась. Выполнение теста прервано");
+-                    return;
+-                }
+-            }
+-            // проверяем что файла физически нету (в меню может не быть пункта, а файл может быть)
+-            else
+-            {
+-                // идем на стр, если 404 - ок, если нет удаляем
+-                TestFramework.OpenURL(TestFramework.WebDriver.Url + "А вот и русская страница.php", CheckPageOnErrors: false);
+-                if (TO_General.Region_404ErrorMessage.Exists())
+-                {
+-                    Log.MesPass("Видим 404 ошибку (ЭТО ВЕРНО), русская страница физически не существует");
+-                }
+-                else
+-                {
+-                    Log.MesNormal("404 ошибка не отображается, русская страница существует, удаляем");
+-                    // удаляем страницу, подтверждаем страницу
+-                    TO_AdminPanel.Button_MenuEditPage.Click();
+-                    TO_AdminPanel.Button_DeletePage.Click();
+-                    TO_General.Region_Wait.WaitWhileElementExists();
+-                    TO_AdminPanel.Button_YesDelete.ClickAndWait();
+-                    // проверяем снова, 404 - ок
+-                    TestFramework.OpenURL(TestFramework.WebDriver.Url.Replace("?clear_cache=Y", "А вот и русская страница.php"), CheckPageOnErrors: false);
+-                    if (TO_General.Region_404ErrorMessage.Exists())
+-                    {
+-                        Log.MesPass("Видим 404 ошибку (ЭТО ВЕРНО), русская страница физически не существует");
+-                    }
+-                    else
+-                    {
+-                        Log.MesError("Тестовая русская страница не удалилась, выполнение теста прервано.");
+-                        return;
+-                    }
+-                }
+-            }
+-            // удаляем страничку september.php
+-            if (TO_Pages.Button_MainMenuPageName("september.php", "сентябрь").Displayed())
+-            {
+-                Log.MesNormal("Найдена тестовая страница сентябрь с прошлого теста. Удаляем");
+-                TO_Pages.Button_MainMenuPageName("september.php", "сентябрь").Click();
+-                // удаляем страницу, подтверждаем страницу
+-                TO_AdminPanel.Button_MenuEditPage.Click();
+-                TO_AdminPanel.Button_DeletePage.Click();
+-                TO_General.Region_Wait.WaitWhileElementExists();
+-                TO_AdminPanel.Button_YesDelete.ClickAndWait();
+-                //проверяем, что страница удалена
+-                if (TO_Pages.Button_MainMenuPageName("september.php", "сентябрь").Exists())
+-                {
+-                    Log.MesError("Тестовая страница сентябрь не удалилась. Выполнение теста прервано");
+-                    return;
+-                }
+-            }
+-            // проверяем что файла физически нету (в меню может не быть пункта, а файл может быть)
+-            else
+-            {
+-                // идем на стр, если 404 - ок, если нет удаляем
+-                TO_Pages.Button_MainMenuPageName("", "Главная").Click();
+-                TestFramework.OpenURL(TestFramework.WebDriver.Url + "september.php", CheckPageOnErrors: false);
+-                if (TO_General.Region_404ErrorMessage.Exists())
+-                {
+-                    Log.MesPass("Видим 404 ошибку (ЭТО ВЕРНО), страница сентябрь физически не существует");
+-                }
+-                else
+-                {
+-                    Log.MesNormal("404 ошибка не отображается, страница сентябрь существует, удаляем");
+-                    // удаляем страницу, подтверждаем страницу
+-                    TO_AdminPanel.Button_MenuEditPage.Click();
+-                    TO_AdminPanel.Button_DeletePage.Click();
+-                    TO_General.Region_Wait.WaitWhileElementExists();
+-                    TO_AdminPanel.Button_YesDelete.ClickAndWait();
+-                    // проверяем снова, 404 - ок
+-                    TestFramework.OpenURL(TestFramework.WebDriver.Url.Replace("?clear_cache=Y", "september.php"), CheckPageOnErrors: false);
+-                    if (TO_General.Region_404ErrorMessage.Exists())
+-                    {
+-                        Log.MesPass("Видим 404 ошибку (ЭТО ВЕРНО), страница сентябрь физически не существует");
+-                    }
+-                    else
+-                    {
+-                        Log.MesError("Тестовая страница сентябрь не удалилась, выполнение теста прервано.");
+-                        return;
+-                    }
+-                }
+-            }
++            // удаляем страницы с прошлого теста
++            DeletePages("/originalonost.php", "Оригинальность", DBType);
++            DeletePages("/А вот и русская страница.php", "А вот и русская страница", DBType);
++            DeletePages("/september.php", "сентябрь", DBType);
+             Log.MesPass("Очистка тестовых данных завершена");
+         }
+ 
