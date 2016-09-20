@@ -7,7 +7,6 @@ build/
 [Oo]bj/
 build/
 .vs/
-*vs/
 
 # OS generated files #
 ehthumbs.db
