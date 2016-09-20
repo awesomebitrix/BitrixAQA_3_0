@@ -5,6 +5,8 @@ x64/
 build/
 [Bb]in/
 [Oo]bj/
+build/
+vs/
 
 # OS generated files #
 ehthumbs.db
